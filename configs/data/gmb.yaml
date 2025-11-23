@@ -1,0 +1,6 @@
+dataset_name: "entity-annotated-corpus"
+csv_filename: "ner_dataset.csv"
+batch_size: 32
+num_workers: 4
+max_len: 128
+test_size: 0.2

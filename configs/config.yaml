@@ -1,0 +1,26 @@
+defaults:
+  - model: bert_cased
+  - data: gmb
+  - _self_
+
+trainer:
+  max_epochs: 5
+  devices: 1                
+  accelerator: "gpu"
+  strategy: "auto"           
+  precision: "16-mixed"
+  
+  log_every_n_steps: 200
+  val_check_interval: 500
+  check_val_every_n_epoch: null
+
+logger:
+  project: "my_unique_ner_project_v1"
+  name: "single_gpu_run_final"
+
+paths:
+  data_dir: "data"
+  plot_dir: "plots"
+  model_save_dir: "models"
+
+seed: 42

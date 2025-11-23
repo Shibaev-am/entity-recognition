@@ -1,0 +1,4 @@
+name: "bert-base-cased"
+lr: 3e-5
+weight_decay: 0.01
+scheduler_gamma: 0.1
