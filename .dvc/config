@@ -1,5 +1,7 @@
 [core]
-    remote = storage
+    remote = storage-http
 ['remote "storage"']
     url = s3://mlopsproject/dvc-storage
     endpointurl = https://storage.yandexcloud.net/
+['remote "storage-http"']
+    url = https://storage.yandexcloud.net/mlopsproject/dvc-storage

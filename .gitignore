@@ -54,4 +54,3 @@ data/*.csv
 # Triton Model Repository (Binary files copies)
 model_repository/**/model.onnx
 model_repository/**/model.onnx.data
-

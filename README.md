@@ -107,4 +107,3 @@ poetry run streamlit run apps/demo_triton.py
 ## Разработка
 
 См. раздел "Структура проекта" выше.
-

@@ -1,10 +1,13 @@
-import torch
-from torch.utils.data import Dataset, DataLoader
-import pytorch_lightning as pl
-from sklearn.model_selection import train_test_split
-from transformers import BertTokenizerFast
-from src.utils import download_data, load_and_clean_data
 import os
+
+import pytorch_lightning as pl
+import torch
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset
+from transformers import BertTokenizerFast
+
+from src.utils import download_data, load_and_clean_data
+
 
 class BertNERDataset(Dataset):
     def __init__(self, sentences, tags, tag2idx, tokenizer, max_len):
@@ -20,20 +23,20 @@ class BertNERDataset(Dataset):
     def __getitem__(self, idx):
         sentence = self.sentences[idx]
         word_labels = self.tags[idx]
-        
+
         encoding = self.tokenizer(
             sentence,
             is_split_into_words=True,
             return_offsets_mapping=True,
-            padding='max_length',
+            padding="max_length",
             truncation=True,
-            max_length=self.max_len
+            max_length=self.max_len,
         )
-        
+
         labels = []
         word_ids = encoding.word_ids()
         prev_word_idx = None
-        
+
         for word_idx in word_ids:
             if word_idx is None:
                 labels.append(-100)
@@ -42,12 +45,13 @@ class BertNERDataset(Dataset):
             else:
                 labels.append(-100)
             prev_word_idx = word_idx
-            
+
         item = {key: torch.as_tensor(val) for key, val in encoding.items()}
-        item['labels'] = torch.as_tensor(labels)
-        if 'offset_mapping' in item:
-            item.pop('offset_mapping')
+        item["labels"] = torch.as_tensor(labels)
+        if "offset_mapping" in item:
+            item.pop("offset_mapping")
         return item
+
 
 class NERDataModule(pl.LightningDataModule):
     def __init__(self, cfg):
@@ -63,23 +67,39 @@ class NERDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         file_path = os.path.join(self.cfg.paths.data_dir, self.cfg.data.csv_filename)
         data = load_and_clean_data(file_path)
-        
+
         sentences = data.groupby("Sentence #")["Word"].apply(list).values
         tags = data.groupby("Sentence #")["Tag"].apply(list).values
-        
+
         tag_vals = list(set(data["Tag"].values))
         self.tag2idx = {t: i for i, t in enumerate(tag_vals)}
         self.idx2tag = {i: t for t, i in self.tag2idx.items()}
-        
+
         train_s, val_s, train_t, val_t = train_test_split(
-            sentences, tags, test_size=self.cfg.data.test_size, random_state=self.cfg.seed
+            sentences,
+            tags,
+            test_size=self.cfg.data.test_size,
+            random_state=self.cfg.seed,
         )
-        
-        self.train_ds = BertNERDataset(train_s, train_t, self.tag2idx, self.tokenizer, self.cfg.data.max_len)
-        self.val_ds = BertNERDataset(val_s, val_t, self.tag2idx, self.tokenizer, self.cfg.data.max_len)
+
+        self.train_ds = BertNERDataset(
+            train_s, train_t, self.tag2idx, self.tokenizer, self.cfg.data.max_len
+        )
+        self.val_ds = BertNERDataset(
+            val_s, val_t, self.tag2idx, self.tokenizer, self.cfg.data.max_len
+        )
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.cfg.data.batch_size, shuffle=True, num_workers=self.cfg.data.num_workers)
+        return DataLoader(
+            self.train_ds,
+            batch_size=self.cfg.data.batch_size,
+            shuffle=True,
+            num_workers=self.cfg.data.num_workers,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.cfg.data.batch_size, num_workers=self.cfg.data.num_workers)
+        return DataLoader(
+            self.val_ds,
+            batch_size=self.cfg.data.batch_size,
+            num_workers=self.cfg.data.num_workers,
+        )

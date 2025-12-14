@@ -5,11 +5,11 @@ defaults:
 
 trainer:
   max_epochs: 5
-  devices: 1                
+  devices: 1
   accelerator: "gpu"
-  strategy: "auto"           
+  strategy: "auto"
   precision: "16-mixed"
-  
+
   log_every_n_steps: 200
   val_check_interval: 500
   check_val_every_n_epoch: null
