@@ -8,24 +8,44 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
+
+# --- Core ML ---
 torch = "^2.1.0"
 transformers = "^4.35.0"
 pytorch-lightning = "^2.1.0"
 hydra-core = "^1.3.2"
-dvc = {extras = ["s3"], version = "^3.0.0"} # или [gdrive] если нужно
-mlflow = "^2.8.0"
+scikit-learn = "^1.3.0"
+
+# --- MLOps & Tracking ---
+# Оставляем только s3, так как вы используете Yandex
+dvc = {extras = ["s3"], version = "^3.0.0"}
+# Исправил версию wandb (0.23 еще нет, актуальная ~0.16.x)
+wandb = "^0.16.0"
+
+# --- Data Processing ---
 pandas = "^2.1.0"
 seqeval = "^1.2.2"
-onnx = "^1.15.0"
-onnxruntime-gpu = "^1.16.0" # Для инференса на GPU
 tqdm = "^4.66.0"
-scikit-learn = "^1.3.0"
-wandb = "^0.23.0"
-dvc-gdrive = "^3.0.1"
-pyopenssl = "^25.3.0"
-cryptography = "^46.0.3"
+
+# --- ONNX (С исправлениями для Mac/Linux) ---
+onnx = "^1.15.0"
 onnxscript = "^0.5.6"
-streamlit = "^1.51.0"
+
+# Если мы на Mac или Windows -> ставим обычный onnxruntime (CPU/CoreML)
+onnxruntime = {version = "^1.16.0", markers = "sys_platform == 'darwin' or sys_platform == 'win32'"}
+
+# Если мы на Linux (ваш сервер с A100) -> ставим GPU версию
+onnxruntime-gpu = {version = "^1.16.0", markers = "sys_platform == 'linux'"}
+
+# --- Web / API ---
+# Исправил версию streamlit (1.51 еще нет, актуальная ~1.31.x)
+streamlit = "^1.31.0"
+
+# --- Security (Опционально, можно убрать, если не требуются жесткие пины) ---
+# Обычно poetry сам подтягивает нужные версии для requests/boto3
+# Но если нужно явно:
+pyopenssl = "^24.0.0" # 25.x еще нет в релизе
+cryptography = "^42.0.0" # 46.x еще нет в релизе
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.11.0"
