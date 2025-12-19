@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
 from transformers import BertTokenizerFast
 
-from src.utils import download_data, load_and_clean_data
+from ner.utils import download_data, load_and_clean_data
 
 
 class BertNERDataset(Dataset):

@@ -7,8 +7,8 @@ from omegaconf import DictConfig
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
-from src.dataset import NERDataModule
-from src.model import BERTNERModel
+from ner.dataset import NERDataModule
+from ner.model import BERTNERModel
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")

@@ -6,7 +6,7 @@ import onnxruntime as ort
 import torch
 from transformers import BertTokenizerFast
 
-sample_text = "Steve Jobs founded Apple in Cupertino."
+SAMPLE_TEXT = "Steve Jobs founded Apple in Cupertino."
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
@@ -27,7 +27,7 @@ def infer(cfg):
     idx2tag = {v: k for k, v in tag2idx.items()}
 
     inputs = tokenizer(
-        sample_text,
+        SAMPLE_TEXT,
         return_tensors="np",
         padding="max_length",
         truncation=True,
@@ -51,7 +51,7 @@ def infer(cfg):
             if not token.startswith("##"):
                 result.append(f"{token}: {tag}")
 
-    print(f"Text: {sample_text}")
+    print(f"Text: {SAMPLE_TEXT}")
     print("Entities:", result)
 
 

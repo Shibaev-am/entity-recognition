@@ -41,11 +41,15 @@ onnxruntime-gpu = {version = "^1.16.0", markers = "sys_platform == 'linux'"}
 # Исправил версию streamlit (1.51 еще нет, актуальная ~1.31.x)
 streamlit = "^1.31.0"
 
+# --- CLI ---
+typer = "^0.9.0"
+
 # --- Security (Опционально, можно убрать, если не требуются жесткие пины) ---
 # Обычно poetry сам подтягивает нужные версии для requests/boto3
 # Но если нужно явно:
 pyopenssl = "^24.0.0" # 25.x еще нет в релизе
 cryptography = "^42.0.0" # 46.x еще нет в релизе
+numpy = "<2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.11.0"

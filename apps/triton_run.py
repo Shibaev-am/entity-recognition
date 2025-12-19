@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import numpy as np
 import requests
@@ -6,15 +6,11 @@ import streamlit as st
 import torch
 from transformers import BertTokenizerFast
 
-st.set_page_config(
-    page_title="NER Project Demo (Triton)", page_icon="🧠", layout="centered"
-)
-
-# === Конфигурация ===
+PROJECT_ROOT = Path(__file__).parent.parent
 TRITON_URL = "http://localhost:8000/v2/models/bert_ner/infer"
-MODEL_NAME = "bert_ner"  # Имя модели в Triton
-TOKENIZER_NAME = "bert-base-cased"  # Или путь к локальной модели
-TAG2IDX_PATH = "models/tag2idx.pt"  # Путь к словарю тегов
+MODEL_NAME = "bert_ner"
+TOKENIZER_NAME = "bert-base-cased"
+TAG2IDX_PATH = PROJECT_ROOT / "models" / "tag2idx.pt"
 
 LABEL_MAPPING = {
     "per": "Person",
@@ -38,29 +34,28 @@ COLOR_MAP = {
     "nat": "#e5e7eb",
 }
 
+DEFAULT_TEXT = (
+    "Steve Jobs presented the new iPhone in San Francisco at the Apple headquarters."
+)
+
 
 @st.cache_resource
 def load_resources():
     try:
         tokenizer = BertTokenizerFast.from_pretrained(TOKENIZER_NAME)
 
-        if os.path.exists(TAG2IDX_PATH):
-            tag2idx = torch.load(TAG2IDX_PATH)
-            idx2tag = {v: k for k, v in tag2idx.items()}
-        else:
-            st.error(f"Файл словаря {TAG2IDX_PATH} не найден!")
-            return None, None
+        if not TAG2IDX_PATH.exists():
+            return None, None, f"Файл словаря не найден: {TAG2IDX_PATH}"
 
-        return tokenizer, idx2tag
+        tag2idx = torch.load(TAG2IDX_PATH, map_location="cpu")
+        idx2tag = {v: k for k, v in tag2idx.items()}
+
+        return tokenizer, idx2tag, None
     except Exception as e:
-        st.error(f"Ошибка загрузки ресурсов: {e}")
-        return None, None
+        return None, None, f"Ошибка загрузки ресурсов: {e}"
 
 
-tokenizer, idx2tag = load_resources()
-
-
-def query_triton(text, tokenizer):
+def query_triton(text: str, tokenizer, idx2tag) -> list[dict]:
     inputs = tokenizer(
         text,
         return_tensors="np",
@@ -72,19 +67,19 @@ def query_triton(text, tokenizer):
 
     input_ids = inputs["input_ids"].astype(np.int64)
     attention_mask = inputs["attention_mask"].astype(np.int64)
-    offset_mapping = inputs["offset_mapping"][0]  # [Seq, 2]
+    offset_mapping = inputs["offset_mapping"][0]
 
     payload = {
         "inputs": [
             {
                 "name": "input_ids",
-                "shape": input_ids.shape,
+                "shape": list(input_ids.shape),
                 "datatype": "INT64",
                 "data": input_ids.tolist(),
             },
             {
                 "name": "attention_mask",
-                "shape": attention_mask.shape,
+                "shape": list(attention_mask.shape),
                 "datatype": "INT64",
                 "data": attention_mask.tolist(),
             },
@@ -93,16 +88,15 @@ def query_triton(text, tokenizer):
     }
 
     try:
-        response = requests.post(TRITON_URL, json=payload)
+        response = requests.post(TRITON_URL, json=payload, timeout=30)
         response.raise_for_status()
         result_data = response.json()
 
-        # Формат Triton JSON response: {"outputs": [{"name": "logits", "data": [...], "shape": [...]}]}
         logits_data = result_data["outputs"][0]["data"]
         shape = result_data["outputs"][0]["shape"]
 
         logits = np.array(logits_data).reshape(shape)
-        preds = np.argmax(logits, axis=2)[0]  # [Seq]
+        preds = np.argmax(logits, axis=2)[0]
 
     except Exception as e:
         st.error(f"Ошибка Triton Inference: {e}")
@@ -111,7 +105,7 @@ def query_triton(text, tokenizer):
     entities = []
     current_entity = None
 
-    for idx, (pred_idx, offset) in enumerate(zip(preds, offset_mapping)):
+    for pred_idx, offset in zip(preds, offset_mapping):
         start, end = offset
         if start == end:
             continue
@@ -128,8 +122,8 @@ def query_triton(text, tokenizer):
                 "score": 1.0,
             }
         elif tag.startswith("I-") and current_entity:
-            type_ = tag.split("-")[1]
-            if type_ == current_entity["entity_group"]:
+            entity_type = tag.split("-")[1]
+            if entity_type == current_entity["entity_group"]:
                 current_entity["end"] = int(end)
             else:
                 entities.append(current_entity)
@@ -145,14 +139,12 @@ def query_triton(text, tokenizer):
     return entities
 
 
-def render_ner_html(text, entities):
-    # Разбиваем длинную строку на две части для читаемости и линтера
+def render_ner_html(text: str, entities: list[dict]) -> str:
     html_content = (
         '<div style="line-height: 3.5; font-family: sans-serif; '
         'font-size: 16px; margin-bottom: 3rem;">'
     )
     last_idx = 0
-
     entities = sorted(entities, key=lambda x: x["start"])
 
     for entity in entities:
@@ -161,12 +153,11 @@ def render_ner_html(text, entities):
         word = text[start:end]
 
         readable_label = LABEL_MAPPING.get(raw_label.lower(), raw_label.upper())
-        color = COLOR_MAP.get(raw_label, "#e5e7eb")
+        color = COLOR_MAP.get(raw_label.lower(), "#e5e7eb")
 
         if start > last_idx:
             html_content += f"<span>{text[last_idx:start]}</span>"
 
-        # Добавляем # noqa: E501, чтобы flake8 не ругался на длинные CSS стили
         entity_html = f"""
         <span style="display: inline-block; position: relative; line-height: 1.0; vertical-align: baseline; margin: 0 4px;">
             <span style="
@@ -204,30 +195,39 @@ def render_ner_html(text, entities):
     return html_content
 
 
-st.title("🔍 NER: Анализ текста (Triton Inference)")
-st.markdown(f"Сервер: `{TRITON_URL}` | Модель: `{MODEL_NAME}`")  # noqa: F821
+def main():
+    st.set_page_config(
+        page_title="NER Project Demo (Triton)", page_icon="🧠", layout="centered"
+    )
 
-default_text = (
-    "Steve Jobs presented the new iPhone in San Francisco at the Apple headquarters."
-)
-text = st.text_area("Введите текст:", default_text, height=100)
+    st.title("🔍 NER: Анализ текста (Triton Inference)")
+    st.markdown(f"Сервер: `{TRITON_URL}` | Модель: `{MODEL_NAME}`")
 
-if st.button("Анализировать", type="primary"):
-    # Добавляем проверку наличия tokenizer и TRITON_URL (если они глобальные)
-    if "tokenizer" in globals() and text:
-        with st.spinner("Запрос к Triton Server..."):
-            results = query_triton(text, tokenizer)  # noqa: F821
-            html_result = render_ner_html(text, results)
+    tokenizer, idx2tag, error = load_resources()
 
-            st.markdown("### Результат:")
-            st.markdown(html_result, unsafe_allow_html=True)
-            st.write("")
+    if error:
+        st.error(f"❌ {error}")
+        return
 
-            with st.expander("Техническая информация (JSON)"):
-                st.json(results)
-    else:
-        # Разбиваем длинное сообщение об ошибке
-        st.error(
-            "Не удалось инициализировать компоненты (Triton/Tokenizer). "
-            "Проверьте логи."
-        )
+    st.success("✅ Ресурсы загружены")
+
+    text = st.text_area("Введите текст:", DEFAULT_TEXT, height=100)
+
+    if st.button("Анализировать", type="primary"):
+        if text:
+            with st.spinner("Запрос к Triton Server..."):
+                results = query_triton(text, tokenizer, idx2tag)
+                html_result = render_ner_html(text, results)
+
+                st.markdown("### Результат:")
+                st.markdown(html_result, unsafe_allow_html=True)
+                st.write("")
+
+                with st.expander("Техническая информация (JSON)"):
+                    st.json(results)
+        else:
+            st.error("Текст пустой")
+
+
+if __name__ == "__main__":
+    main()

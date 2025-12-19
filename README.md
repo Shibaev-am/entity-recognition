@@ -18,26 +18,39 @@ source $(poetry env info --path)/bin/activate
 
 ## 2. Обучение и экспорт модели
 
-Если у вас еще нет обученной модели и ONNX файла, выполните следующие шаги:
+Все команды проекта доступны через единую точку входа `ner.commands`.
 
 ### 2.1. Обучение модели
 ```bash
 # Запуск обучения (параметры конфигурируются в configs/config.yaml)
-python scripts/train.py
+python -m ner.commands train
+
+# С переопределением параметров Hydra
+python -m ner.commands train trainer.max_epochs=5 model.lr=1e-5
 ```
 Чекпоинт модели сохранится в папку `models/`.
 
 ### 2.2. Экспорт в ONNX
 Скрипт автоматически найдет последний чекпоинт и сконвертирует его.
 ```bash
-python scripts/to_onnx.py
+python -m ner.commands to-onnx
 ```
 Это создаст файлы `models/model.onnx` и `models/model.onnx.data`.
 
+### 2.3. Локальный инференс
+```bash
+python -m ner.commands infer
+```
+
 ## 3. Подготовка Triton Model Repository
 
-Необходимо скопировать модель в структуру папок, понятную Triton Server.
+Используйте команду для автоматического копирования модели:
 
+```bash
+python -m ner.commands prepare-triton
+```
+
+Или выполните вручную:
 ```bash
 # Создаем структуру папок
 mkdir -p model_repository/bert_ner/1
@@ -52,9 +65,15 @@ cp models/model.onnx models/model.onnx.data model_repository/bert_ner/1/
 
 ```
 .
+├── ner/                # Основной пакет проекта
+│   ├── __init__.py
+│   ├── commands.py     # Единая точка входа для всех команд
+│   ├── dataset.py      # Загрузка и обработка данных
+│   ├── model.py        # Модель BERT NER
+│   └── utils.py        # Вспомогательные функции
 ├── apps/               # Streamlit приложения (UI)
-│   ├── demo_local.py   # Локальный инференс (HuggingFace Pipeline)
-│   └── demo_triton.py  # Клиент для Triton Inference Server
+│   ├── local_run.py    # Локальный инференс (HuggingFace Pipeline)
+│   └── triton_run.py   # Клиент для Triton Inference Server
 ├── configs/            # Конфигурации Hydra (.yaml)
 ├── data/               # Данные для обучения
 ├── model_repository/   # Репозиторий моделей для Triton
@@ -64,8 +83,7 @@ cp models/model.onnx models/model.onnx.data model_repository/bert_ner/1/
 │       └── config.pbtxt
 ├── models/             # Локальные артефакты обучения (.ckpt, .onnx)
 ├── outputs/            # Логи обучения (Hydra)
-├── scripts/            # Скрипты (train, export)
-└── src/                # Исходный код (model, dataset, utils)
+└── scripts/            # Скрипты (train, export)
 ```
 
 ## 4. Запуск Triton Inference Server
@@ -96,13 +114,100 @@ docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
 
 ## 5. Запуск UI приложения
 
-В отдельном терминале запустите Streamlit приложение, которое будет отправлять запросы к Triton.
+В отдельном терминале запустите Streamlit приложение:
 
 ```bash
-poetry run streamlit run apps/demo_triton.py
+# Демо с Triton Inference Server
+python -m ner.commands demo-triton
+
+# Или локальное демо (без Triton)
+python -m ner.commands demo-local
 ```
 
 Приложение будет доступно по адресу: `http://localhost:8501`.
+
+## Все доступные команды
+
+Справка по всем командам:
+
+```bash
+python -m ner.commands --help
+```
+
+### `train` — Обучение модели
+
+Запускает обучение BERT NER модели. Параметры конфигурируются в `configs/config.yaml` или передаются через Hydra overrides.
+
+```bash
+# Базовый запуск
+python -m ner.commands train
+
+# С переопределением параметров
+python -m ner.commands train trainer.max_epochs=5 model.lr=1e-5
+
+# Изменение batch_size и количества воркеров
+python -m ner.commands train data.batch_size=32 data.num_workers=4
+```
+
+### `to-onnx` — Экспорт в ONNX формат
+
+Конвертирует обученный чекпоинт (`.ckpt`) в ONNX формат для деплоя.
+
+```bash
+# Базовый запуск (найдёт последний чекпоинт автоматически)
+python -m ner.commands to-onnx
+
+# С указанием другой директории моделей
+python -m ner.commands to-onnx paths.model_save_dir=./other_models
+```
+
+### `infer` — Локальный инференс
+
+Тестовый запуск инференса на ONNX модели с примером текста.
+
+```bash
+python -m ner.commands infer
+```
+
+### `prepare-triton` — Подготовка Triton Model Repository
+
+Копирует ONNX модель в структуру папок, необходимую для Triton Inference Server.
+
+```bash
+python -m ner.commands prepare-triton
+```
+
+### `demo-local` — Локальное Streamlit демо
+
+Запускает веб-интерфейс для NER с использованием локальной ONNX модели (без Triton).
+
+```bash
+python -m ner.commands demo-local
+```
+
+Приложение будет доступно по адресу: `http://localhost:8501`
+
+### `demo-triton` — Streamlit демо с Triton
+
+Запускает веб-интерфейс для NER с отправкой запросов на Triton Inference Server.
+
+```bash
+# Сначала запустите Triton Server, затем:
+python -m ner.commands demo-triton
+```
+
+Приложение будет доступно по адресу: `http://localhost:8501`
+
+---
+
+| Команда | Описание |
+|---------|----------|
+| `train` | Обучение модели BERT NER |
+| `to-onnx` | Экспорт чекпоинта в ONNX формат |
+| `infer` | Тестовый инференс на ONNX модели |
+| `prepare-triton` | Подготовка model_repository для Triton |
+| `demo-local` | Запуск локального Streamlit демо |
+| `demo-triton` | Запуск Streamlit демо с Triton |
 
 ## Разработка
 

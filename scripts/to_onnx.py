@@ -3,7 +3,7 @@ import os
 import hydra
 import torch
 
-from src.model import BERTNERModel
+from ner.model import BERTNERModel
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
