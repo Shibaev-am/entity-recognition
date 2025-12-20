@@ -27,11 +27,9 @@ matplotlib = "^3.8.0"
 # --- Data Processing ---
 pandas = "^2.1.0"
 seqeval = "^1.2.2"
-tqdm = "^4.66.0"
 
 # --- ONNX (С исправлениями для Mac/Linux) ---
 onnx = "^1.15.0"
-onnxscript = "^0.5.6"
 
 # Если мы на Mac или Windows -> ставим обычный onnxruntime (CPU/CoreML)
 onnxruntime = {version = "^1.16.0", markers = "sys_platform == 'darwin' or sys_platform == 'win32'"}
@@ -51,11 +49,7 @@ streamlit = "^1.31.0"
 # --- CLI ---
 typer = "^0.9.0"
 
-# --- Security (Опционально, можно убрать, если не требуются жесткие пины) ---
-# Обычно poetry сам подтягивает нужные версии для requests/boto3
-# Но если нужно явно:
-pyopenssl = "^24.0.0" # 25.x еще нет в релизе
-cryptography = "^42.0.0" # 46.x еще нет в релизе
+# --- Pinned versions for compatibility ---
 numpy = "<2.0.0"
 
 [tool.poetry.group.dev.dependencies]
