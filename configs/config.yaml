@@ -18,6 +18,10 @@ logger:
   project: "my_unique_ner_project_v1"
   name: "single_gpu_run_final"
 
+mlflow:
+  tracking_uri: "http://127.0.0.1:8080"
+  experiment_name: "ner-bert-experiment"
+
 paths:
   data_dir: "data"
   plot_dir: "plots"

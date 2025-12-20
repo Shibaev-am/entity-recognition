@@ -83,10 +83,10 @@ class NERDataModule(pl.LightningDataModule):
         )
 
         self.train_ds = BertNERDataset(
-            train_s, train_t, self.tag2idx, self.tokenizer, self.cfg.data.max_len
+            train_s, train_t, self.tag2idx, self.tokenizer, self.cfg.data.max_length
         )
         self.val_ds = BertNERDataset(
-            val_s, val_t, self.tag2idx, self.tokenizer, self.cfg.data.max_len
+            val_s, val_t, self.tag2idx, self.tokenizer, self.cfg.data.max_length
         )
 
     def train_dataloader(self):

@@ -43,6 +43,9 @@ mlruns/
 .dvc/cache
 .dvc/tmp
 
+# Plots (generated during training)
+# plots/*.png
+
 # Models & Data
 # Keep .dvc files if you use DVC, but ignore raw large files if not tracked
 models/*.ckpt
@@ -54,3 +57,10 @@ data/*.csv
 # Triton Model Repository (Binary files copies)
 model_repository/**/model.onnx
 model_repository/**/model.onnx.data
+
+mlflow.db
+*.db
+mlruns/
+mlartifacts/
+outputs/
+logs/

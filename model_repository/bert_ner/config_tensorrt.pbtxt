@@ -1,0 +1,32 @@
+name: "bert_ner"
+platform: "tensorrt_plan"
+max_batch_size: 8
+input [
+  {
+    name: "input_ids"
+    data_type: TYPE_INT64
+    dims: [ -1 ]
+  },
+  {
+    name: "attention_mask"
+    data_type: TYPE_INT64
+    dims: [ -1 ]
+  }
+]
+output [
+  {
+    name: "logits"
+    data_type: TYPE_FP32
+    dims: [ -1, 17 ]
+  }
+]
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
+dynamic_batching {
+  preferred_batch_size: [ 1, 2, 4, 8 ]
+  max_queue_delay_microseconds: 100
+}
