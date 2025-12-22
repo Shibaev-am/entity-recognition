@@ -253,10 +253,11 @@ def train(cfg: DictConfig):
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=cfg.paths.model_save_dir,
-        filename="bert-ner-{step:04d}-{val_f1:.2f}",
+        filename="bert-ner_step{step:04d}_val_f1_{val_f1:.2f}",
         save_top_k=1,
         monitor="val_f1",
         mode="max",
+        auto_insert_metric_name=False,
     )
 
     lr_monitor = LearningRateMonitor(logging_interval="step")
