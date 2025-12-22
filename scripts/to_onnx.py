@@ -1,12 +1,16 @@
 import os
+from pathlib import Path
 
 import hydra
 import torch
 
 from ner.model import BERTNERModel
 
+# Абсолютный путь к директории configs
+CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
-@hydra.main(version_base=None, config_path="../configs", config_name="config")
+
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def convert_to_onnx(cfg):
     model_dir = cfg.paths.model_save_dir
     checkpoints = [f for f in os.listdir(model_dir) if f.endswith(".ckpt")]

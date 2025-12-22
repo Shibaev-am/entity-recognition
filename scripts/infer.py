@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import hydra
 import numpy as np
@@ -8,8 +9,11 @@ from transformers import BertTokenizerFast
 
 SAMPLE_TEXT = "Steve Jobs founded Apple in Cupertino."
 
+# Абсолютный путь к директории configs
+CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
-@hydra.main(version_base=None, config_path="../configs", config_name="config")
+
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def infer(cfg):
     model_dir = cfg.paths.model_save_dir
     onnx_path = os.path.join(model_dir, "model.onnx")

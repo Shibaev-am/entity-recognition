@@ -1,7 +1,11 @@
 import os
+from pathlib import Path
 
 import hydra
 import numpy as np
+
+# Абсолютный путь к директории configs
+CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 # pycuda нужен для работы с GPU памятью в TensorRT
 import pycuda.autoinit  # noqa: F401
@@ -118,7 +122,7 @@ class TensorRTInference:
             self.stream.synchronize()
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="config")
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def infer_tensorrt(cfg):
     model_dir = cfg.paths.model_save_dir
     engine_path = os.path.join(model_dir, "model.engine")

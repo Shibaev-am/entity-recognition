@@ -5,6 +5,7 @@ import requests
 import streamlit as st
 import torch
 from transformers import BertTokenizerFast
+import textwrap
 
 PROJECT_ROOT = Path(__file__).parent.parent
 TRITON_URL = "http://localhost:8000/v2/models/bert_ner/infer"
@@ -31,7 +32,7 @@ COLOR_MAP = {
     "tim": "#fef08a",
     "art": "#e9d5ff",
     "eve": "#fed7aa",
-    "nat": "#e5e7eb",
+    "nat": "#e5e7eb"
 }
 
 DEFAULT_TEXT = (
@@ -139,32 +140,30 @@ def query_triton(text: str, tokenizer, idx2tag) -> list[dict]:
     return entities
 
 
-def render_ner_html(text: str, entities: list[dict]) -> str:
-    html_content = (
-        '<div style="line-height: 3.5; font-family: sans-serif; '
-        'font-size: 16px; margin-bottom: 3rem;">'
-    )
+def render_ner_html(text, entities):
+    html_content = '<div style="line-height: 3.5; font-family: sans-serif; font-size: 16px; margin-bottom: 3rem;">'
     last_idx = 0
-    entities = sorted(entities, key=lambda x: x["start"])
-
+    
+    entities = sorted(entities, key=lambda x: x['start'])
+    
     for entity in entities:
-        start, end = entity["start"], entity["end"]
-        raw_label = entity["entity_group"]
+        start, end = entity['start'], entity['end']
+        raw_label = entity['entity_group']
         word = text[start:end]
-
+        
         readable_label = LABEL_MAPPING.get(raw_label.lower(), raw_label.upper())
-        color = COLOR_MAP.get(raw_label.lower(), "#e5e7eb")
-
+        color = COLOR_MAP.get(raw_label, "#e5e7eb")
+        
         if start > last_idx:
-            html_content += f"<span>{text[last_idx:start]}</span>"
-
+            html_content += f'<span>{text[last_idx:start]}</span>'
+        
         entity_html = f"""
         <span style="display: inline-block; position: relative; line-height: 1.0; vertical-align: baseline; margin: 0 4px;">
             <span style="
-                background-color: {color};
-                color: #111827;
-                padding: 4px 6px;
-                border-radius: 6px;
+                background-color: {color}; 
+                color: #111827; 
+                padding: 4px 6px; 
+                border-radius: 6px; 
                 font-weight: 500;
                 border: 1px solid rgba(0,0,0,0.1);">
                 {word}
@@ -175,7 +174,7 @@ def render_ner_html(text: str, entities: list[dict]) -> str:
                 left: 50%;
                 transform: translateX(-50%);
                 font-size: 0.75em;
-                color: {color};
+                color: {color}; 
                 margin-top: 0.5rem;
                 font-weight: 600;
                 white-space: nowrap;
@@ -184,14 +183,14 @@ def render_ner_html(text: str, entities: list[dict]) -> str:
                 {readable_label}
             </span>
         </span>
-        """  # noqa: E501
+        """
         html_content += entity_html
         last_idx = end
-
+        
     if last_idx < len(text):
-        html_content += f"<span>{text[last_idx:]}</span>"
-
-    html_content += "</div>"
+        html_content += f'<span>{text[last_idx:]}</span>'
+        
+    html_content += '</div>'
     return html_content
 
 

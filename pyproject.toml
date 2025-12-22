@@ -39,8 +39,7 @@ onnxruntime-gpu = {version = "^1.16.0", markers = "sys_platform == 'linux'"}
 
 # --- TensorRT (только на Linux с NVIDIA GPU) ---
 # tensorrt устанавливается через pip только на Linux
-tensorrt = {version = "^10.0.0", markers = "sys_platform == 'linux'"}
-pycuda = {version = "^2024.1", markers = "sys_platform == 'linux'"}
+pycuda = {version = "^2025.1", markers = "sys_platform == 'linux'"}
 
 # --- Web / API ---
 # Исправил версию streamlit (1.51 еще нет, актуальная ~1.31.x)
@@ -51,6 +50,8 @@ typer = "^0.9.0"
 
 # --- Pinned versions for compatibility ---
 numpy = "<2.0.0"
+onnxscript = "^0.5.7"
+tensorrt = "^10.14.1.48.post1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.11.0"

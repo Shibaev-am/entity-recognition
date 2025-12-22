@@ -1,7 +1,11 @@
 import os
+from pathlib import Path
 
 import hydra
 import tensorrt as trt
+
+# Абсолютный путь к директории configs
+CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
 
@@ -22,11 +26,10 @@ def build_engine_from_onnx(
 
     # Парсим ONNX модель
     print(f"Parsing ONNX model: {onnx_path}")
-    with open(onnx_path, "rb") as f:
-        if not parser.parse(f.read()):
-            for i in range(parser.num_errors):
-                print(f"ONNX Parser Error: {parser.get_error(i)}")
-            raise RuntimeError("Failed to parse ONNX model")
+    if not parser.parse_from_file(onnx_path):
+        for i in range(parser.num_errors):
+            print(f"ONNX Parser Error: {parser.get_error(i)}")
+        raise RuntimeError("Failed to parse ONNX model")
 
     # Настраиваем конфигурацию builder
     config = builder.create_builder_config()
@@ -71,7 +74,7 @@ def build_engine_from_onnx(
     return engine_path
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="config")
+@hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def convert_to_tensorrt(cfg):
     model_dir = cfg.paths.model_save_dir
     onnx_path = os.path.join(model_dir, "model.onnx")

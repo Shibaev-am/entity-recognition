@@ -12,6 +12,7 @@ class BERTNERModel(pl.LightningModule):
         self.model = BertForTokenClassification.from_pretrained(
             model_name, num_labels=num_labels
         )
+        self.model.train()
         self.lr = lr
         self.idx2tag = idx2tag
         self.validation_step_outputs = []
@@ -23,6 +24,7 @@ class BERTNERModel(pl.LightningModule):
         )
 
     def training_step(self, batch, batch_idx):
+        self.model.train()
         outputs = self(batch["input_ids"], batch["attention_mask"], batch["labels"])
         loss = outputs.loss
         self.log(

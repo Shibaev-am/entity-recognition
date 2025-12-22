@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -95,10 +96,8 @@ def demo_triton():
 
 @app.command("prepare-triton")
 def prepare_triton(
-    backend: str = typer.Option(
-        "onnx",
-        "--backend",
-        "-b",
+    backend: str = typer.Argument(
+        "onnx",  # Значение по умолчанию, если ничего не передать
         help="Бэкенд для инференса: 'onnx' или 'tensorrt'",
     ),
 ):

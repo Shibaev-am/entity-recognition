@@ -1195,7 +1195,6 @@ description = "CUDA Toolkit meta-package"
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "sys_platform == \"linux\""
 files = [
     {file = "cuda_toolkit-13.1.0-py2.py3-none-any.whl", hash = "sha256:eab684dc673884bbaee94b8ce09521a1a9469ddf58be70122b63589f813cff92"},
 ]
@@ -3570,7 +3569,7 @@ description = "CUDA Runtime native Libraries"
 optional = false
 python-versions = ">=3"
 groups = ["main"]
-markers = "sys_platform == \"linux\""
+markers = "sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
     {file = "nvidia_cuda_runtime-13.1.80-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:5f1aa8fd779cae1a78aa8fdbaa5e4f245300baff120099d9b5ee84e3f4506a29"},
     {file = "nvidia_cuda_runtime-13.1.80-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:dac25b52e69050e5a7a84957e6df470a85b185f8f648a99a1ab1dfce027576cf"},
@@ -3827,14 +3826,14 @@ reference = ["Pillow"]
 
 [[package]]
 name = "onnx-ir"
-version = "0.1.12"
+version = "0.1.13"
 description = "Efficient in-memory representation for ONNX"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "onnx_ir-0.1.12-py3-none-any.whl", hash = "sha256:17f86faf8a53b979430bde1bc6022c7a162b0d1534550ddb17a1d37eb993e765"},
-    {file = "onnx_ir-0.1.12.tar.gz", hash = "sha256:742e0bff875d0547724187560b3f441833191c8aa939c05f14176f4892784deb"},
+    {file = "onnx_ir-0.1.13-py3-none-any.whl", hash = "sha256:2791493d1529fdbea60c257dc7bc0933dc812e6d68f4976d8b59aa7b4c2de8cf"},
+    {file = "onnx_ir-0.1.13.tar.gz", hash = "sha256:e08f00d30579bdbff2152692a6f1bc1f0523d3321ac6348aadcd40595e56231e"},
 ]
 
 [package.dependencies]
@@ -3918,14 +3917,14 @@ cudnn = ["nvidia-cudnn-cu12 (>=9.0,<10.0)"]
 
 [[package]]
 name = "onnxscript"
-version = "0.5.6"
+version = "0.5.7"
 description = "Naturally author ONNX functions and models using a subset of Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "onnxscript-0.5.6-py3-none-any.whl", hash = "sha256:b0c3355fea3eecab8ca291da8b77afddcaacd3ada5ee59294390a049ea123938"},
-    {file = "onnxscript-0.5.6.tar.gz", hash = "sha256:cc3338b2976daffd2af0bb6ac4866a4dca76aefface1666a0d7bc65ad9850822"},
+    {file = "onnxscript-0.5.7-py3-none-any.whl", hash = "sha256:f94a66059c56d13b44908e9b7fd9dae4b4faa6681c784f3fd4c29cfa863e454e"},
+    {file = "onnxscript-0.5.7.tar.gz", hash = "sha256:480d572451bc233ed7f742b5005cb0c899594b2fdc28e15167dab26f7fd777ad"},
 ]
 
 [package.dependencies]
@@ -4662,14 +4661,14 @@ files = [
 
 [[package]]
 name = "pycuda"
-version = "2024.1.2"
+version = "2025.1.2"
 description = "Python wrapper for Nvidia CUDA"
 optional = false
 python-versions = "~=3.8"
 groups = ["main"]
 markers = "sys_platform == \"linux\""
 files = [
-    {file = "pycuda-2024.1.2.tar.gz", hash = "sha256:d110b727cbea859da4b63e91b6fa1e9fc32c5bade02d89ff449975996e9ccfab"},
+    {file = "pycuda-2025.1.2.tar.gz", hash = "sha256:0dd82911d72d8e03c63128ae44e99cfb7b4689094aba6cc5193d8e944717aafa"},
 ]
 
 [package.dependencies]
@@ -5051,25 +5050,6 @@ files = [
     {file = "pygtrie-2.5.0-py3-none-any.whl", hash = "sha256:8795cda8105493d5ae159a5bef313ff13156c5d4d72feddefacaad59f8c8ce16"},
     {file = "pygtrie-2.5.0.tar.gz", hash = "sha256:203514ad826eb403dab1d2e2ddd034e0d1534bbe4dbe0213bb0593f66beba4e2"},
 ]
-
-[[package]]
-name = "pyopenssl"
-version = "24.3.0"
-description = "Python wrapper module around the OpenSSL library"
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "pyOpenSSL-24.3.0-py3-none-any.whl", hash = "sha256:e474f5a473cd7f92221cc04976e48f4d11502804657a08a989fb3be5514c904a"},
-    {file = "pyopenssl-24.3.0.tar.gz", hash = "sha256:49f7a019577d834746bc55c5fce6ecbcec0f2b4ec5ce1cf43a9a173b8138bb36"},
-]
-
-[package.dependencies]
-cryptography = ">=41.0.5,<45"
-
-[package.extras]
-docs = ["sphinx (!=5.2.0,!=5.2.0.post0,!=7.2.5)", "sphinx_rtd_theme"]
-test = ["pretend", "pytest (>=3.0.1)", "pytest-rerunfailures"]
 
 [[package]]
 name = "pyparsing"
@@ -6622,7 +6602,6 @@ description = "TensorRT Metapackage"
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "sys_platform == \"linux\""
 files = [
     {file = "tensorrt-10.14.1.48.post1.tar.gz", hash = "sha256:5aed87c541fcef881f874fb5724eadbe291851fe2152c962b9cba57cafd4872b"},
 ]
@@ -6637,7 +6616,6 @@ description = "A high performance deep learning inference library"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "sys_platform == \"linux\""
 files = [
     {file = "tensorrt_cu13-10.14.1.48.post1.tar.gz", hash = "sha256:f667aee4b4b908520820b824ada7b7168f29e2659aacee2d5ae42139c6cb884e"},
 ]
@@ -6656,7 +6634,6 @@ description = "A high performance deep learning inference library"
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "sys_platform == \"linux\""
 files = [
     {file = "tensorrt_cu13_bindings-10.14.1.48.post1-cp310-none-manylinux_2_28_x86_64.whl", hash = "sha256:d8f13ac102187c4a45d11cc671f7f7e59a01ec4e4f1c707fb748d30042a49416"},
     {file = "tensorrt_cu13_bindings-10.14.1.48.post1-cp310-none-manylinux_2_35_aarch64.whl", hash = "sha256:35e34a14411a24fde813471e4ef1882615992ee1e093c5c254f4fca070b98973"},
@@ -6688,7 +6665,6 @@ description = "TensorRT Libraries"
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "sys_platform == \"linux\""
 files = [
     {file = "tensorrt_cu13_libs-10.14.1.48.post1.tar.gz", hash = "sha256:8ffa01f315276bff7c7dd01bf11415d0c8c21c45012abd42f2878153ba312d76"},
 ]
@@ -7619,4 +7595,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "cbf700ec6e25e5b86a28ece73017f9b368c03debbd762b5c0e3c5dd36782dd75"
+content-hash = "0a8ab56340742aa2f2c30bedf56c08dd1dbc8f12bfa1311638e4b529582ca3c7"

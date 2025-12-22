@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+import numpy as np
 
 import hydra
 import matplotlib.pyplot as plt
@@ -33,30 +34,25 @@ def get_git_commit_id() -> str:
 
 
 class MetricsPlotCallback(Callback):
-    """Callback для сохранения графиков метрик в директорию plots."""
+    """
+    Callback для сохранения графиков метрик в директорию plots.
+    Строит графики зависимости метрик от глобального шага (Steps).
+    """
 
     def __init__(self, plot_dir: str):
         super().__init__()
         self.plot_dir = plot_dir
         os.makedirs(plot_dir, exist_ok=True)
 
-        self.train_losses = []
-        self.train_steps = []
-        self.train_f1_scores = []
-        self.train_epochs = []
-        self.val_losses = []
-        self.val_f1_scores = []
-        self.val_precisions = []
-        self.val_recalls = []
-        self.val_epochs = []
-
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        if outputs is not None and "loss" in outputs:
-            self.train_losses.append(outputs["loss"].item())
-            self.train_steps.append(trainer.global_step)
-        elif hasattr(outputs, "item"):
-            self.train_losses.append(outputs.item())
-            self.train_steps.append(trainer.global_step)
+        # Храним историю как списки кортежей: [(step, value), ...]
+        self.history = {
+            "train_loss": [],
+            "train_f1": [],
+            "val_loss": [],
+            "val_f1": [],
+            "val_precision": [],
+            "val_recall": []
+        }
 
     def _to_python(self, value):
         """Конвертировать тензор или число в Python float."""
@@ -64,140 +60,133 @@ class MetricsPlotCallback(Callback):
             return value.item()
         return float(value)
 
-    def on_train_epoch_end(self, trainer, pl_module):
-        metrics = trainer.callback_metrics
-        epoch = trainer.current_epoch
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        """Собираем метрики обучения на каждом шаге."""
+        step = trainer.global_step
+        
+        # 1. Логируем Loss
+        if outputs is not None:
+            if isinstance(outputs, dict) and "loss" in outputs:
+                self.history["train_loss"].append((step, self._to_python(outputs["loss"])))
+            elif hasattr(outputs, "item"):
+                 self.history["train_loss"].append((step, self._to_python(outputs)))
 
+        # 2. Логируем Train F1 (если модель логирует его on_step=True)
+        # Мы берем данные из callback_metrics, куда PL складывает все self.log()
+        metrics = trainer.callback_metrics
         if "train_f1" in metrics:
-            self.train_f1_scores.append(self._to_python(metrics["train_f1"]))
-            self.train_epochs.append(epoch)
+             self.history["train_f1"].append((step, self._to_python(metrics["train_f1"])))
 
     def on_validation_epoch_end(self, trainer, pl_module):
+        """
+        Собираем метрики валидации.
+        Так как val_check_interval=100, этот метод будет вызываться каждые 100 шагов.
+        """
+        step = trainer.global_step
         metrics = trainer.callback_metrics
-        epoch = trainer.current_epoch
 
-        if "val_loss" in metrics:
-            self.val_losses.append(self._to_python(metrics["val_loss"]))
-        if "val_f1" in metrics:
-            self.val_f1_scores.append(self._to_python(metrics["val_f1"]))
-        if "val_precision" in metrics:
-            self.val_precisions.append(self._to_python(metrics["val_precision"]))
-        if "val_recall" in metrics:
-            self.val_recalls.append(self._to_python(metrics["val_recall"]))
-        self.val_epochs.append(epoch)
+        # Список метрик валидации, которые мы хотим отслеживать
+        # Ключи словаря - как мы храним у себя, Значения - как они называются в self.log() модели
+        keys_map = {
+            "val_loss": "val_loss",
+            "val_f1": "val_f1",
+            "val_precision": "val_precision",
+            "val_recall": "val_recall"
+        }
+
+        for internal_key, log_key in keys_map.items():
+            if log_key in metrics:
+                self.history[internal_key].append((step, self._to_python(metrics[log_key])))
 
     def on_train_end(self, trainer, pl_module):
-        self._save_plots()
+        # В режиме DDP (Multi-GPU) рисуем только на главном процессе
+        if trainer.is_global_zero:
+            self._save_plots()
 
     def _save_plots(self):
-        """Сохранить все графики в директорию plots."""
-        # График 1: Training Loss
-        if self.train_losses:
-            plt.figure(figsize=(10, 6))
-            plt.plot(self.train_steps, self.train_losses, label="Train Loss", alpha=0.7)
-            plt.xlabel("Step")
-            plt.ylabel("Loss")
-            plt.title("Training Loss over Steps")
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.savefig(os.path.join(self.plot_dir, "train_loss.png"), dpi=150)
-            plt.close()
+        """
+        Сохранение графиков в стиле WandB (Dark Mode)
+        с УМНЫМ МАСШТАБИРОВАНИЕМ (Robust Scaling), игнорирующим выбросы.
+        """
+        import numpy as np  # Не забудьте импортировать numpy наверху файла, если еще нет
+        
+        print(f"Saving plots to {self.plot_dir}...")
+        
+        plt.style.use('dark_background')
+        
+        plots_config = [
+            ("train_loss", "Training Loss", "train_loss.png", "#29b5e8"),
+            ("val_loss", "Validation Loss", "val_loss.png", "#ff9900"),
+            ("val_f1", "Validation F1", "val_f1.png", "#29b5e8"),
+            ("val_precision", "Validation Precision", "val_precision.png", "#d16ff5"),
+            ("val_recall", "Validation Recall", "val_recall.png", "#ff5050"),
+        ]
 
-        # График 2: Validation Loss
-        if self.val_losses:
-            plt.figure(figsize=(10, 6))
-            plt.plot(
-                self.val_epochs[: len(self.val_losses)],
-                self.val_losses,
-                "o-",
-                label="Validation Loss",
-                color="orange",
-            )
-            plt.xlabel("Epoch")
-            plt.ylabel("Loss")
-            plt.title("Validation Loss over Epochs")
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.savefig(os.path.join(self.plot_dir, "val_loss.png"), dpi=150)
-            plt.close()
+        for key, title, filename, color in plots_config:
+            data = self.history[key]
+            if not data:
+                continue
 
-        # График 3: Train F1
-        if self.train_f1_scores:
-            plt.figure(figsize=(10, 6))
-            plt.plot(
-                self.train_epochs,
-                self.train_f1_scores,
-                "o-",
-                label="Train F1",
-                color="blue",
-            )
-            plt.xlabel("Epoch")
-            plt.ylabel("F1 Score")
-            plt.title("Training F1 over Epochs")
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.ylim(0, 1)
-            plt.savefig(os.path.join(self.plot_dir, "train_f1.png"), dpi=150)
-            plt.close()
+            steps, values = zip(*data)
+            values_arr = np.array(values)
 
-        # График 4: Validation F1
-        if self.val_f1_scores:
-            plt.figure(figsize=(10, 6))
-            plt.plot(
-                self.val_epochs[: len(self.val_f1_scores)],
-                self.val_f1_scores,
-                "o-",
-                label="Val F1",
-                color="green",
-            )
-            plt.xlabel("Epoch")
-            plt.ylabel("F1 Score")
-            plt.title("Validation F1 over Epochs")
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.ylim(0, 1)
-            plt.savefig(os.path.join(self.plot_dir, "val_f1.png"), dpi=150)
-            plt.close()
+            if "train_loss" in key.lower():
+                fig = plt.figure(figsize=(20, 6), facecolor='#1e1e1e')
+            else:
+                fig = plt.figure(figsize=(10, 6), facecolor='#1e1e1e')
+            ax = plt.gca()
+            ax.set_facecolor('#1e1e1e')
 
-        # График 5: Validation Recall
-        if self.val_recalls:
-            plt.figure(figsize=(10, 6))
-            plt.plot(
-                self.val_epochs[: len(self.val_recalls)],
-                self.val_recalls,
-                "o-",
-                label="Val Recall",
-                color="red",
-            )
-            plt.xlabel("Epoch")
-            plt.ylabel("Recall")
-            plt.title("Validation Recall over Epochs")
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.ylim(0, 1)
-            plt.savefig(os.path.join(self.plot_dir, "val_recall.png"), dpi=150)
-            plt.close()
+            # Рисуем линию
+            plt.plot(steps, values, label=title, color=color, alpha=0.9, linewidth=2, marker='.', markersize=8)
+            
+            # === ЛОГИКА УМНОГО ЗУМА (ROBUST SCALING) ===
+            if "train_loss" in key.lower():
+                y_min = 0
+                y_max = 0.5
+            elif "loss" in key.lower():
+                # Для Loss: отбрасываем верхние 5% (выбросы в начале, когда лосс огромный)
+                # Берем минимум данных и 95-й процентиль
+                y_min = np.min(values_arr)
+                y_max = np.percentile(values_arr, 95)
+            else:
+                # Для Метрик (F1, Precision...): отбрасываем нижние 5% (нули в начале)
+                # Берем 5-й процентиль и максимум данных
+                y_min = np.percentile(values_arr, 5)
+                y_max = np.max(values_arr)
 
-        # График 6: Validation Precision
-        if self.val_precisions:
-            plt.figure(figsize=(10, 6))
-            plt.plot(
-                self.val_epochs[: len(self.val_precisions)],
-                self.val_precisions,
-                "o-",
-                label="Val Precision",
-                color="purple",
-            )
-            plt.xlabel("Epoch")
-            plt.ylabel("Precision")
-            plt.title("Validation Precision over Epochs")
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.ylim(0, 1)
-            plt.savefig(os.path.join(self.plot_dir, "val_precision.png"), dpi=150)
-            plt.close()
+            # Вычисляем разброс для красивых отступов
+            y_range = y_max - y_min
+            if y_range == 0: y_range = 0.1
+            padding = y_range * 0.1 # 10% отступа
 
-        print(f"Plots saved to: {self.plot_dir}")
+            # Применяем лимиты
+            plt.ylim(y_min - padding, y_max + padding)
+            
+            # ============================================
+
+            # Сетка и оформление
+            from matplotlib.ticker import AutoMinorLocator
+            ax.yaxis.set_minor_locator(AutoMinorLocator())
+            ax.xaxis.set_minor_locator(AutoMinorLocator())
+            plt.grid(True, which='major', color='white', linestyle='-', linewidth=0.5, alpha=0.15)
+            plt.grid(True, which='minor', color='white', linestyle=':', linewidth=0.3, alpha=0.05)
+
+            plt.xlabel("Global Step", color='white', fontsize=12)
+            plt.ylabel(title, color='white', fontsize=12)
+            plt.title(f"{title} over Steps", color='white', fontsize=14, pad=15)
+            plt.legend(frameon=True, facecolor='#2b2b2b', edgecolor='white', labelcolor='white')
+            
+            for spine in ax.spines.values():
+                spine.set_color('white')
+            ax.tick_params(axis='both', colors='white', which='both')
+
+            save_path = os.path.join(self.plot_dir, filename)
+            plt.savefig(save_path, dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
+            plt.close()
+            
+        plt.style.use('default') 
+        print(f"Plots saved successfully.")
 
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
@@ -210,6 +199,10 @@ def train(cfg: DictConfig):
     dm = NERDataModule(cfg)
     dm.prepare_data()
     dm.setup()
+    
+    os.makedirs(cfg.paths.model_save_dir, exist_ok=True)
+    torch.save(dm.tag2idx, os.path.join(cfg.paths.model_save_dir, "tag2idx.pt"))
+
 
     model = BERTNERModel(
         model_name=cfg.model.name,
@@ -233,7 +226,7 @@ def train(cfg: DictConfig):
         "git_commit_id": git_commit_id,
     }
 
-    # WandB Logger (отключен - требуется авторизация)
+    # WandB Logger
     wandb_logger = WandbLogger(
         project=cfg.logger.project, name=cfg.logger.name, log_model="all"
     )
@@ -251,9 +244,10 @@ def train(cfg: DictConfig):
     config_dict = OmegaConf.to_container(cfg, resolve=True)
     mlflow_logger.log_hyperparams({"full_config": str(config_dict)})
 
+    # Имя чекпоинта упрощено, чтобы избежать ошибок MLflow
     checkpoint_callback = ModelCheckpoint(
         dirpath=cfg.paths.model_save_dir,
-        filename="bert-ner_step{step:04d}_val_f1_{val_f1:.2f}",
+        filename="checkpoint-step-{step:04d}",
         save_top_k=1,
         monitor="val_f1",
         mode="max",
@@ -269,7 +263,7 @@ def train(cfg: DictConfig):
         devices=cfg.trainer.devices,
         strategy=cfg.trainer.strategy,
         precision=cfg.trainer.precision,
-        logger=[mlflow_logger],  # Используем только MLflow (wandb отключен)
+        logger=[mlflow_logger, wandb_logger],
         callbacks=[checkpoint_callback, lr_monitor, metrics_plot_callback],
         log_every_n_steps=cfg.trainer.log_every_n_steps,
         val_check_interval=cfg.trainer.val_check_interval,
@@ -278,20 +272,19 @@ def train(cfg: DictConfig):
 
     trainer.fit(model, dm)
 
+    # Сохраняем словарь тегов
     torch.save(dm.tag2idx, os.path.join(cfg.paths.model_save_dir, "tag2idx.pt"))
 
-    # Логируем графики как артефакты в MLflow
-    import mlflow
-
-    mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
-
-    with mlflow.start_run(run_id=mlflow_logger.run_id):
+    # Логируем графики в MLflow (безопасный метод)
+    if trainer.is_global_zero:
+        print(f"Logging plots to MLflow run: {mlflow_logger.run_id}")
         for plot_file in os.listdir(cfg.paths.plot_dir):
             if plot_file.endswith(".png"):
-                mlflow.log_artifact(
-                    os.path.join(cfg.paths.plot_dir, plot_file), artifact_path="plots"
+                mlflow_logger.experiment.log_artifact(
+                    run_id=mlflow_logger.run_id,
+                    local_path=os.path.join(cfg.paths.plot_dir, plot_file),
+                    artifact_path="plots"
                 )
-        print(f"Plots logged to MLflow run: {mlflow_logger.run_id}")
 
 
 if __name__ == "__main__":

@@ -52,6 +52,7 @@ models/*.ckpt
 models/*.onnx
 models/*.onnx.data
 models/*.pt
+models/*.engine
 data/*.csv
 
 # Triton Model Repository (Binary files copies)
