@@ -1,5 +1,5 @@
-name: "bert_ner"
-platform: "tensorrt_plan"
+name: "bert_ner_tensorrt"
+backend: "tensorrt"
 max_batch_size: 8
 input [
   {

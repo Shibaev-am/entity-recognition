@@ -21,8 +21,6 @@ def convert_to_onnx(cfg):
     ckpt_path = os.path.join(model_dir, checkpoints[0])
     print(f"Loading checkpoint: {ckpt_path}")
 
-    # Загрузка весов
-    # ВАЖНО: Нам нужно знать количество классов. В реальном коде нужно загрузить tag2idx.pt
     tag2idx = torch.load(os.path.join(model_dir, "tag2idx.pt"), map_location="cpu")
     model = BERTNERModel.load_from_checkpoint(
         ckpt_path,
@@ -35,10 +33,17 @@ def convert_to_onnx(cfg):
     model.to("cpu")
     model.eval()
 
-    dummy_input = torch.randint(0, 1000, (1, 128), device="cpu")  # [Batch, Seq]
+    dummy_input = torch.randint(0, 1000, (1, 128), device="cpu")
     dummy_mask = torch.ones((1, 128), dtype=torch.long, device="cpu")
 
-    output_path = os.path.join(model_dir, "model.onnx")
+    # output_path = os.path.join(model_dir, "model.onnx")
+    output_path = (
+        Path(model_dir).parent
+        / "model_repository"
+        / "bert_ner_onnx"
+        / "1"
+        / "model.onnx"
+    )
 
     print(
         f"Exporting with params: {sum(p.numel() for p in model.model.parameters())} parameters"

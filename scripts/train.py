@@ -1,7 +1,6 @@
 import os
 import subprocess
 from pathlib import Path
-import numpy as np
 
 import hydra
 import matplotlib.pyplot as plt
@@ -51,7 +50,7 @@ class MetricsPlotCallback(Callback):
             "val_loss": [],
             "val_f1": [],
             "val_precision": [],
-            "val_recall": []
+            "val_recall": [],
         }
 
     def _to_python(self, value):
@@ -63,19 +62,23 @@ class MetricsPlotCallback(Callback):
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         """Собираем метрики обучения на каждом шаге."""
         step = trainer.global_step
-        
+
         # 1. Логируем Loss
         if outputs is not None:
             if isinstance(outputs, dict) and "loss" in outputs:
-                self.history["train_loss"].append((step, self._to_python(outputs["loss"])))
+                self.history["train_loss"].append(
+                    (step, self._to_python(outputs["loss"]))
+                )
             elif hasattr(outputs, "item"):
-                 self.history["train_loss"].append((step, self._to_python(outputs)))
+                self.history["train_loss"].append((step, self._to_python(outputs)))
 
         # 2. Логируем Train F1 (если модель логирует его on_step=True)
         # Мы берем данные из callback_metrics, куда PL складывает все self.log()
         metrics = trainer.callback_metrics
         if "train_f1" in metrics:
-             self.history["train_f1"].append((step, self._to_python(metrics["train_f1"])))
+            self.history["train_f1"].append(
+                (step, self._to_python(metrics["train_f1"]))
+            )
 
     def on_validation_epoch_end(self, trainer, pl_module):
         """
@@ -91,12 +94,14 @@ class MetricsPlotCallback(Callback):
             "val_loss": "val_loss",
             "val_f1": "val_f1",
             "val_precision": "val_precision",
-            "val_recall": "val_recall"
+            "val_recall": "val_recall",
         }
 
         for internal_key, log_key in keys_map.items():
             if log_key in metrics:
-                self.history[internal_key].append((step, self._to_python(metrics[log_key])))
+                self.history[internal_key].append(
+                    (step, self._to_python(metrics[log_key]))
+                )
 
     def on_train_end(self, trainer, pl_module):
         # В режиме DDP (Multi-GPU) рисуем только на главном процессе
@@ -109,11 +114,11 @@ class MetricsPlotCallback(Callback):
         с УМНЫМ МАСШТАБИРОВАНИЕМ (Robust Scaling), игнорирующим выбросы.
         """
         import numpy as np  # Не забудьте импортировать numpy наверху файла, если еще нет
-        
+
         print(f"Saving plots to {self.plot_dir}...")
-        
-        plt.style.use('dark_background')
-        
+
+        plt.style.use("dark_background")
+
         plots_config = [
             ("train_loss", "Training Loss", "train_loss.png", "#29b5e8"),
             ("val_loss", "Validation Loss", "val_loss.png", "#ff9900"),
@@ -131,15 +136,24 @@ class MetricsPlotCallback(Callback):
             values_arr = np.array(values)
 
             if "train_loss" in key.lower():
-                fig = plt.figure(figsize=(20, 6), facecolor='#1e1e1e')
+                fig = plt.figure(figsize=(20, 6), facecolor="#1e1e1e")
             else:
-                fig = plt.figure(figsize=(10, 6), facecolor='#1e1e1e')
+                fig = plt.figure(figsize=(10, 6), facecolor="#1e1e1e")
             ax = plt.gca()
-            ax.set_facecolor('#1e1e1e')
+            ax.set_facecolor("#1e1e1e")
 
             # Рисуем линию
-            plt.plot(steps, values, label=title, color=color, alpha=0.9, linewidth=2, marker='.', markersize=8)
-            
+            plt.plot(
+                steps,
+                values,
+                label=title,
+                color=color,
+                alpha=0.9,
+                linewidth=2,
+                marker=".",
+                markersize=8,
+            )
+
             # === ЛОГИКА УМНОГО ЗУМА (ROBUST SCALING) ===
             if "train_loss" in key.lower():
                 y_min = 0
@@ -157,36 +171,56 @@ class MetricsPlotCallback(Callback):
 
             # Вычисляем разброс для красивых отступов
             y_range = y_max - y_min
-            if y_range == 0: y_range = 0.1
-            padding = y_range * 0.1 # 10% отступа
+            if y_range == 0:
+                y_range = 0.1
+            padding = y_range * 0.1  # 10% отступа
 
             # Применяем лимиты
             plt.ylim(y_min - padding, y_max + padding)
-            
+
             # ============================================
 
             # Сетка и оформление
             from matplotlib.ticker import AutoMinorLocator
+
             ax.yaxis.set_minor_locator(AutoMinorLocator())
             ax.xaxis.set_minor_locator(AutoMinorLocator())
-            plt.grid(True, which='major', color='white', linestyle='-', linewidth=0.5, alpha=0.15)
-            plt.grid(True, which='minor', color='white', linestyle=':', linewidth=0.3, alpha=0.05)
+            plt.grid(
+                True,
+                which="major",
+                color="white",
+                linestyle="-",
+                linewidth=0.5,
+                alpha=0.15,
+            )
+            plt.grid(
+                True,
+                which="minor",
+                color="white",
+                linestyle=":",
+                linewidth=0.3,
+                alpha=0.05,
+            )
 
-            plt.xlabel("Global Step", color='white', fontsize=12)
-            plt.ylabel(title, color='white', fontsize=12)
-            plt.title(f"{title} over Steps", color='white', fontsize=14, pad=15)
-            plt.legend(frameon=True, facecolor='#2b2b2b', edgecolor='white', labelcolor='white')
-            
+            plt.xlabel("Global Step", color="white", fontsize=12)
+            plt.ylabel(title, color="white", fontsize=12)
+            plt.title(f"{title} over Steps", color="white", fontsize=14, pad=15)
+            plt.legend(
+                frameon=True, facecolor="#2b2b2b", edgecolor="white", labelcolor="white"
+            )
+
             for spine in ax.spines.values():
-                spine.set_color('white')
-            ax.tick_params(axis='both', colors='white', which='both')
+                spine.set_color("white")
+            ax.tick_params(axis="both", colors="white", which="both")
 
             save_path = os.path.join(self.plot_dir, filename)
-            plt.savefig(save_path, dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
+            plt.savefig(
+                save_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor()
+            )
             plt.close()
-            
-        plt.style.use('default') 
-        print(f"Plots saved successfully.")
+
+        plt.style.use("default")
+        print("Plots saved successfully.")
 
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
@@ -199,10 +233,9 @@ def train(cfg: DictConfig):
     dm = NERDataModule(cfg)
     dm.prepare_data()
     dm.setup()
-    
+
     os.makedirs(cfg.paths.model_save_dir, exist_ok=True)
     torch.save(dm.tag2idx, os.path.join(cfg.paths.model_save_dir, "tag2idx.pt"))
-
 
     model = BERTNERModel(
         model_name=cfg.model.name,
@@ -283,7 +316,7 @@ def train(cfg: DictConfig):
                 mlflow_logger.experiment.log_artifact(
                     run_id=mlflow_logger.run_id,
                     local_path=os.path.join(cfg.paths.plot_dir, plot_file),
-                    artifact_path="plots"
+                    artifact_path="plots",
                 )
 
 

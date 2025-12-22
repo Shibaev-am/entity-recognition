@@ -1,4 +1,4 @@
-name: "bert_ner"
+name: "bert_ner_onnx"
 platform: "onnxruntime_onnx"
 max_batch_size: 0
 input [

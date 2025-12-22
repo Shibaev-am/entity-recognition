@@ -8,7 +8,7 @@ from transformers import BertTokenizerFast
 
 PROJECT_ROOT = Path(__file__).parent.parent
 MODELS_DIR = PROJECT_ROOT / "models"
-ONNX_PATH = MODELS_DIR / "model.onnx"
+ONNX_PATH = MODELS_DIR / "model_repository" / "bert_ner_onnx" / "1" / "model.onnx"
 TAG2IDX_PATH = MODELS_DIR / "tag2idx.pt"
 TOKENIZER_NAME = "bert-base-cased"
 

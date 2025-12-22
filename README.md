@@ -16,6 +16,9 @@
 | **Внутренний выход** | Логиты размерности `[batch_size, seq_len, num_labels]` |
 | **Внешний вывод** | Отображение текста с семантической подсветкой сущностей |
 
+## Пример работы системы
+![NER Demo Scan](assets/example.jpg)
+
 ### Метрики
 
 - **Основная метрика:** Micro F1-score (Entity-level) с использованием библиотеки `seqeval` (важно строгое совпадение целых сущностей, состоящих из нескольких слов)
@@ -92,14 +95,14 @@ python -m ner.commands train trainer.max_epochs=5 model.lr=1e-5
 ```bash
 python -m ner.commands to-onnx
 ```
-Это создаст файлы `models/model.onnx` и `models/model.onnx.data`.
+Это создаст файлы `model_repository/bert_ner_onnx/1/model.onnx` и `model_repository/bert_ner_onnx/1/model.onnx.data`.
 
 ### 2.3. Конвертация в TensorRT (опционально, только Linux + NVIDIA GPU)
 Для максимальной производительности можно сконвертировать ONNX модель в TensorRT engine.
 ```bash
 python -m ner.commands to-tensorrt
 ```
-Это создаст файл `models/model.engine`.
+Это создаст файл `model_repository/bert_ner_tensorrt/1/model.plan`.
 
 **Примечание:** TensorRT доступен только на Linux с NVIDIA GPU и требует установки CUDA и TensorRT SDK.
 
@@ -112,41 +115,7 @@ python -m ner.commands infer
 python -m ner.commands infer-tensorrt
 ```
 
-## 3. Подготовка Triton Model Repository
-
-Используйте команду для автоматического копирования модели. Поддерживаются два бэкенда: **ONNX** и **TensorRT**.
-
-```bash
-# Подготовка с ONNX бэкендом (по умолчанию)
-python -m ner.commands prepare-triton
-
-# Или явно указать бэкенд
-python -m ner.commands prepare-triton --backend onnx
-
-# Подготовка с TensorRT бэкендом (требует предварительной конвертации)
-python -m ner.commands prepare-triton --backend tensorrt
-```
-
-**Сравнение бэкендов:**
-| Бэкенд | Файл модели | Производительность | Требования |
-|--------|-------------|-------------------|------------|
-| ONNX | `model.onnx` | Хорошая | Универсальный |
-| TensorRT | `model.engine` | Максимальная | Linux + NVIDIA GPU |
-
-Или подготовьте вручную:
-```bash
-# Создаем структуру папок
-mkdir -p model_repository/bert_ner/1
-
-# Для ONNX:
-cp models/model.onnx models/model.onnx.data model_repository/bert_ner/1/
-
-# Для TensorRT:
-cp models/model.engine model_repository/bert_ner/1/model.plan
-cp model_repository/bert_ner/config_tensorrt.pbtxt model_repository/bert_ner/config.pbtxt
-```
-
-## 4. Запуск Triton Inference Server
+## 3. Запуск Triton Inference Server
 
 Для запуска сервера используется Docker. Убедитесь, что вы находитесь в корне проекта.
 
@@ -172,13 +141,13 @@ docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
 
 Дождитесь в логах сообщения: `Started HTTPService at 0.0.0.0:8000`.
 
-## 5. Запуск UI приложения
+## 4. Запуск UI приложения
 
 В отдельном терминале запустите Streamlit приложение:
 
 ```bash
 # Демо с Triton Inference Server
-python -m ner.commands demo-triton
+python -m ner.commands run-app
 
 # Или локальное демо (без Triton)
 python -m ner.commands demo-local
@@ -204,9 +173,6 @@ python -m ner.commands train
 
 # С переопределением параметров
 python -m ner.commands train trainer.max_epochs=5 model.lr=1e-5
-
-# Изменение batch_size и количества воркеров
-python -m ner.commands train data.batch_size=32 data.num_workers=4
 ```
 
 ### `to-onnx` — Экспорт в ONNX формат
@@ -214,11 +180,8 @@ python -m ner.commands train data.batch_size=32 data.num_workers=4
 Конвертирует обученный чекпоинт (`.ckpt`) в ONNX формат для деплоя.
 
 ```bash
-# Базовый запуск (найдёт последний чекпоинт автоматически)
+# Найдёт последний чекпоинт автоматически
 python -m ner.commands to-onnx
-
-# С указанием другой директории моделей
-python -m ner.commands to-onnx paths.model_save_dir=./other_models
 ```
 
 ### `to-tensorrt` — Конвертация в TensorRT
@@ -226,11 +189,7 @@ python -m ner.commands to-onnx paths.model_save_dir=./other_models
 Конвертирует ONNX модель в TensorRT engine для максимальной производительности на NVIDIA GPU.
 
 ```bash
-# Базовый запуск (требует предварительного экспорта в ONNX)
 python -m ner.commands to-tensorrt
-
-# С указанием другой директории моделей
-python -m ner.commands to-tensorrt paths.model_save_dir=./other_models
 ```
 
 **Примечание:** Команда доступна только на Linux с установленным TensorRT SDK.
@@ -243,28 +202,6 @@ python -m ner.commands to-tensorrt paths.model_save_dir=./other_models
 python -m ner.commands infer
 ```
 
-### `infer-tensorrt` — Локальный инференс (TensorRT)
-
-Тестовый запуск инференса на TensorRT модели с примером текста.
-
-```bash
-python -m ner.commands infer-tensorrt
-```
-
-### `prepare-triton` — Подготовка Triton Model Repository
-
-Копирует модель в структуру папок, необходимую для Triton Inference Server. Поддерживает выбор бэкенда.
-
-```bash
-# С ONNX бэкендом (по умолчанию)
-python -m ner.commands prepare-triton
-
-# С TensorRT бэкендом
-python -m ner.commands prepare-triton --backend tensorrt
-# или короткая форма
-python -m ner.commands prepare-triton -b tensorrt
-```
-
 ### `demo-local` — Локальное Streamlit демо
 
 Запускает веб-интерфейс для NER с использованием локальной ONNX модели (без Triton).
@@ -275,7 +212,7 @@ python -m ner.commands demo-local
 
 Приложение будет доступно по адресу: `http://localhost:8501`
 
-### `demo-triton` — Streamlit демо с Triton
+### `run-app` — Streamlit демо с Triton
 
 Запускает веб-интерфейс для NER с отправкой запросов на Triton Inference Server.
 
@@ -294,10 +231,8 @@ python -m ner.commands demo-triton
 | `to-onnx` | Экспорт чекпоинта в ONNX формат |
 | `to-tensorrt` | Конвертация ONNX в TensorRT engine |
 | `infer` | Тестовый инференс на ONNX модели |
-| `infer-tensorrt` | Тестовый инференс на TensorRT модели |
-| `prepare-triton` | Подготовка model_repository для Triton (--backend onnx/tensorrt) |
 | `demo-local` | Запуск локального Streamlit демо |
-| `demo-triton` | Запуск Streamlit демо с Triton |
+| `run-app` | Запуск Streamlit демо с Triton |
 
 ## Структура проекта
 
@@ -315,9 +250,8 @@ python -m ner.commands demo-triton
 ├── scripts/                # Скрипты для запуска
 │   ├── train.py            # Обучение модели
 │   ├── to_onnx.py          # Экспорт в ONNX
-│   ├── to_tensorrt.py      # Конвертация в TensorRT
-│   ├── infer.py            # Инференс ONNX
-│   └── infer_tensorrt.py   # Инференс TensorRT
+│   ├── to_tensorrt.sh      # Конвертация в TensorRT
+│   └── infer.py            # Инференс ONNX
 ├── configs/                # Конфигурации Hydra
 │   ├── config.yaml         # Основной конфиг
 │   ├── data/
@@ -330,17 +264,16 @@ python -m ner.commands demo-triton
 │   └── download.py         # Скрипт загрузки данных
 ├── models/                 # Артефакты обучения
 │   ├── *.ckpt              # Чекпоинты PyTorch Lightning
-│   ├── model.onnx          # Экспортированная ONNX модель
 │   └── tag2idx.pt          # Маппинг тегов
-├── model_repository/       # Репозиторий для Triton Server
-│   └── bert_ner/
-│       ├── 1/              # Версия модели
-│       │   └── model.onnx
-│       ├── config.pbtxt          # Конфиг для ONNX бэкенда
-│       └── config_tensorrt.pbtxt # Конфиг для TensorRT бэкенда
-├── outputs/                # Логи обучения (Hydra)
-├── mlruns/                 # Артефакты MLflow
-├── wandb/                  # Артефакты WandB
+├── model_repository/       # Репозиторий для Triton Server (ВАЖНО ТУТ)
+│   ├── bert_ner_onnx/      # Модель 1: ONNX
+│   │    ├── 1/
+│   │    │   └── model.onnx
+│   │    └── config.pbtxt
+│   └── bert_ner_tensorrt/  # Модель 2: TensorRT
+│        ├── 1/
+│        │   └── model.plan
+│        └── config.pbtxt
 ├── plots/                  # Графики и визуализации
 ├── pyproject.toml          # Зависимости (Poetry)
 └── poetry.lock
