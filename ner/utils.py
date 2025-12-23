@@ -5,10 +5,6 @@ import pandas as pd
 
 
 def download_data(data_dir: str, filename: str):
-    """
-    Проверяет наличие данных. Если файла нет в папке data/,
-    пытается найти его в стандартных путях (на случай Kaggle) или сообщает об ошибке.
-    """
     data_path = Path(data_dir)
     data_path.mkdir(parents=True, exist_ok=True)
     target_path = data_path / filename
@@ -35,9 +31,6 @@ def download_data(data_dir: str, filename: str):
 
 
 def load_and_clean_data(file_path: str):
-    """
-    Загружает CSV, исправляет названия колонок и заполняет пропуски.
-    """
     print(f"Loading data from: {file_path}")
 
     try:

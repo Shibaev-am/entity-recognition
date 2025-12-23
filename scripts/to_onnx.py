@@ -5,7 +5,6 @@ import torch
 
 from ner.model import BERTNERModel
 
-# Абсолютный путь к директории configs
 CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 
@@ -35,7 +34,6 @@ def convert_to_onnx(cfg):
     dummy_input = torch.randint(0, 1000, (1, 128), device="cpu")
     dummy_mask = torch.ones((1, 128), dtype=torch.long, device="cpu")
 
-    # output_path = model_dir / "model.onnx"
     output_path = (
         Path(model_dir).parent
         / "model_repository"

@@ -8,14 +8,12 @@ from transformers import BertTokenizerFast
 
 SAMPLE_TEXT = "Steve Jobs founded Apple in Cupertino."
 
-# Абсолютный путь к директории configs
 CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def infer(cfg):
     model_dir = Path(cfg.paths.model_save_dir)
-    # onnx_path = model_dir / "model.onnx"
     onnx_path = (
         model_dir.parent / "model_repository" / "bert_ner_onnx" / "1" / "model.onnx"
     )

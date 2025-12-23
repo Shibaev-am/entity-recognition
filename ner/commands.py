@@ -87,8 +87,6 @@ def run_triton(
     ] = "onnx",
 ):
     """Запуск Triton Inference Server с выбранной моделью."""
-    # print(device, backend)
-    # exit()
     backend = backend.lower()
     if backend not in ("onnx", "tensorrt"):
         typer.echo(
@@ -125,16 +123,12 @@ def demo_triton(
         )
         raise typer.Exit(1)
 
-    # Передаём backend в Streamlit через переменную окружения
     env = os.environ.copy()
     env["TRITON_BACKEND"] = backend
 
     demo_path = PROJECT_ROOT / "apps" / "triton_run.py"
-    typer.echo(f"🚀 Запуск демо с бэкендом: {backend.upper()}")
+    typer.echo(f"Запуск демо с бэкендом: {backend.upper()}")
     subprocess.run(["streamlit", "run", str(demo_path)], env=env, check=True)
-
-    # demo_path = PROJECT_ROOT / "apps" / "triton_run.py"
-    # subprocess.run(["streamlit", "run", str(demo_path)], check=True)
 
 
 def main():

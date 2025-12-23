@@ -12,7 +12,6 @@ from pytorch_lightning.loggers import MLFlowLogger, WandbLogger
 from ner.dataset import NERDataModule
 from ner.model import BERTNERModel
 
-# Абсолютный путь к директории configs
 CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 
@@ -42,7 +41,6 @@ class MetricsPlotCallback(Callback):
         self.plot_dir = Path(plot_dir)
         self.plot_dir.mkdir(parents=True, exist_ok=True)
 
-        # Храним историю как списки кортежей: [(step, value), ...]
         self.history = {
             "train_loss": [],
             "train_f1": [],
@@ -62,7 +60,6 @@ class MetricsPlotCallback(Callback):
         """Собираем метрики обучения на каждом шаге."""
         step = trainer.global_step
 
-        # 1. Логируем Loss
         if outputs is not None:
             if isinstance(outputs, dict) and "loss" in outputs:
                 self.history["train_loss"].append(
@@ -71,8 +68,6 @@ class MetricsPlotCallback(Callback):
             elif hasattr(outputs, "item"):
                 self.history["train_loss"].append((step, self._to_python(outputs)))
 
-        # 2. Логируем Train F1 (если модель логирует его on_step=True)
-        # Мы берем данные из callback_metrics, куда PL складывает все self.log()
         metrics = trainer.callback_metrics
         if "train_f1" in metrics:
             self.history["train_f1"].append(
@@ -87,8 +82,6 @@ class MetricsPlotCallback(Callback):
         step = trainer.global_step
         metrics = trainer.callback_metrics
 
-        # Список метрик валидации, которые мы хотим отслеживать
-        # Ключи словаря - как мы храним у себя, Значения - как они называются в self.log() модели
         keys_map = {
             "val_loss": "val_loss",
             "val_f1": "val_f1",
@@ -103,7 +96,6 @@ class MetricsPlotCallback(Callback):
                 )
 
     def on_train_end(self, trainer, pl_module):
-        # В режиме DDP (Multi-GPU) рисуем только на главном процессе
         if trainer.is_global_zero:
             self._save_plots()
 
@@ -112,7 +104,7 @@ class MetricsPlotCallback(Callback):
         Сохранение графиков в стиле WandB (Dark Mode)
         с УМНЫМ МАСШТАБИРОВАНИЕМ (Robust Scaling), игнорирующим выбросы.
         """
-        import numpy as np  # Не забудьте импортировать numpy наверху файла, если еще нет
+        import numpy as np
 
         print(f"Saving plots to {self.plot_dir}...")
 
@@ -153,33 +145,23 @@ class MetricsPlotCallback(Callback):
                 markersize=8,
             )
 
-            # === ЛОГИКА УМНОГО ЗУМА (ROBUST SCALING) ===
             if "train_loss" in key.lower():
                 y_min = 0
                 y_max = 0.5
             elif "loss" in key.lower():
-                # Для Loss: отбрасываем верхние 5% (выбросы в начале, когда лосс огромный)
-                # Берем минимум данных и 95-й процентиль
                 y_min = np.min(values_arr)
                 y_max = np.percentile(values_arr, 95)
             else:
-                # Для Метрик (F1, Precision...): отбрасываем нижние 5% (нули в начале)
-                # Берем 5-й процентиль и максимум данных
                 y_min = np.percentile(values_arr, 5)
                 y_max = np.max(values_arr)
 
-            # Вычисляем разброс для красивых отступов
             y_range = y_max - y_min
             if y_range == 0:
                 y_range = 0.1
-            padding = y_range * 0.1  # 10% отступа
+            padding = y_range * 0.1
 
-            # Применяем лимиты
             plt.ylim(y_min - padding, y_max + padding)
 
-            # ============================================
-
-            # Сетка и оформление
             from matplotlib.ticker import AutoMinorLocator
 
             ax.yaxis.set_minor_locator(AutoMinorLocator())
@@ -226,7 +208,6 @@ class MetricsPlotCallback(Callback):
 def train(cfg: DictConfig):
     pl.seed_everything(cfg.seed)
 
-    # Создаём директорию для графиков
     Path(cfg.paths.plot_dir).mkdir(parents=True, exist_ok=True)
 
     dm = NERDataModule(cfg)
@@ -243,10 +224,8 @@ def train(cfg: DictConfig):
         idx2tag=dm.idx2tag,
     )
 
-    # Получаем git commit id
     git_commit_id = get_git_commit_id()
 
-    # Гиперпараметры для логирования
     hyperparams = {
         "model_name": cfg.model.name,
         "learning_rate": cfg.model.lr,
@@ -258,13 +237,11 @@ def train(cfg: DictConfig):
         "git_commit_id": git_commit_id,
     }
 
-    # WandB Logger
     wandb_logger = WandbLogger(
         project=cfg.logger.project, name=cfg.logger.name, log_model="all"
     )
     wandb_logger.experiment.config.update(hyperparams)
 
-    # MLflow Logger
     mlflow_logger = MLFlowLogger(
         experiment_name=cfg.mlflow.experiment_name,
         tracking_uri=cfg.mlflow.tracking_uri,
@@ -272,11 +249,9 @@ def train(cfg: DictConfig):
     )
     mlflow_logger.log_hyperparams(hyperparams)
 
-    # Логируем полный конфиг как артефакт в MLflow
     config_dict = OmegaConf.to_container(cfg, resolve=True)
     mlflow_logger.log_hyperparams({"full_config": str(config_dict)})
 
-    # Имя чекпоинта упрощено, чтобы избежать ошибок MLflow
     checkpoint_callback = ModelCheckpoint(
         dirpath=cfg.paths.model_save_dir,
         filename="checkpoint-step-{step:04d}",
@@ -303,11 +278,9 @@ def train(cfg: DictConfig):
     )
 
     trainer.fit(model, dm)
-
-    # Сохраняем словарь тегов
+    
     torch.save(dm.tag2idx, Path(cfg.paths.model_save_dir) / "tag2idx.pt")
 
-    # Логируем графики в MLflow (безопасный метод)
     if trainer.is_global_zero:
         plot_dir = Path(cfg.paths.plot_dir)
         print(f"Logging plots to MLflow run: {mlflow_logger.run_id}")

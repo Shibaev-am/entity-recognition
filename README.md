@@ -39,7 +39,7 @@
 |----------------|----------|
 | Объём | ~48k предложений, ~1.3M слов |
 | Теги | 17 уникальных тегов (IOB-формат: B-geo, I-geo, B-per, O и т.д.) |
-| Разделение | train/val/test: 80/10/10 |
+| Разделение | train/val: 80/20 |
 
 **Особенности:**
 - Дисбаланс классов: тег `O` доминирует, классы `art`, `eve`, `nat` представлены слабо (<0.1%)
@@ -79,6 +79,12 @@ source $(poetry env info --path)/bin/activate
 ## 2. Обучение и экспорт модели
 
 Все команды проекта доступны через единую точку входа `ner.commands`.
+
+### 2.0. Пуллим датасет и поднимаем mlflow-server:
+```bash
+dvc pull
+mlflow server --host 127.0.0.1 --port 8080
+```
 
 ### 2.1. Обучение модели
 ```bash
@@ -126,60 +132,23 @@ python -m ner.commands infer-tensorrt
 python -m ner.commands run-triton
 
 # GPU + TensorRT модель
-python -m ner.commands run-triton --model "tensorrt"
+python -m ner.commands run-triton --backend "tensorrt"
 
 # CPU + ONNX модель
 python -m ner.commands run-triton --device "cpu"
 
 # Полный синтаксис
-python -m ner.commands run-triton --device "gpu" --model "onnx"
-python -m ner.commands run-triton --device "cpu" --model "onnx"
-python -m ner.commands run-triton --device "gpu" --model "tensorrt"
+python -m ner.commands run-triton --device "gpu" --backend "onnx"
+python -m ner.commands run-triton --device "cpu" --backend "onnx"
+python -m ner.commands run-triton --device "gpu" --backend "tensorrt"
 ```
 
-**Примечание:** TensorRT модель требует GPU, поэтому `--device "gpu" --model "tensorrt"` вызовет ошибку.
-
-### Ручной запуск Docker
-
-**Команда запуска (GPU, все модели):**
-```bash
-docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
-  -v $(pwd)/model_repository:/models \
-  nvcr.io/nvidia/tritonserver:24.05-py3 \
-  tritonserver --model-repository=/models
-```
-
-**Только ONNX модель:**
-```bash
-docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
-  -v $(pwd)/model_repository:/models \
-  nvcr.io/nvidia/tritonserver:24.05-py3 \
-  tritonserver --model-repository=/models \
-  --model-control-mode=explicit --load-model=bert_ner_onnx
-```
-
-**Только TensorRT модель:**
-```bash
-docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
-  -v $(pwd)/model_repository:/models \
-  nvcr.io/nvidia/tritonserver:24.05-py3 \
-  tritonserver --model-repository=/models \
-  --model-control-mode=explicit --load-model=bert_ner_tensorrt
-```
+**Примечание:** TensorRT модель требует GPU, поэтому `--device "gpu" --backend "tensorrt"` вызовет ошибку.
 
 **Разбор команды:**
-*   `--gpus all`: Использовать все доступные GPU.
-*   `--rm`: Удалить контейнер после остановки.
 *   `-p 8000:8000`: Проброс HTTP порта (для REST API).
 *   `-p 8001:8001`: Проброс GRPC порта.
 *   `-p 8002:8002`: Проброс порта метрик.
-*   `-v $(pwd)/model_repository:/models`: Монтирование локальной папки `model_repository` внутрь контейнера в `/models`.
-*   `nvcr.io/nvidia/tritonserver:24.05-py3`: Образ Docker (версия должна поддерживать версию Opset вашего ONNX файла).
-*   `--model-control-mode=explicit`: Загружать только явно указанные модели.
-*   `--load-model=<name>`: Имя модели для загрузки.
-
-**Вариант запуска на CPU:**
-Если GPU недоступен, просто уберите флаг `--gpus all`.
 
 Дождитесь в логах сообщения: `Started HTTPService at 0.0.0.0:8000`.
 
@@ -188,8 +157,11 @@ docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
 В отдельном терминале запустите Streamlit приложение:
 
 ```bash
-# Демо с Triton Inference Server
+# Демо с Triton Inference Server(по умолчанию пытается с onnx)
 python -m ner.commands run-app
+
+# С TensorRT
+python -m ner.commands run-app tensorrt
 
 # Или локальное демо (без Triton)
 python -m ner.commands demo-local
@@ -260,7 +232,7 @@ python -m ner.commands demo-local
 
 ```bash
 # Сначала запустите Triton Server, затем:
-python -m ner.commands demo-triton
+python -m ner.commands run-app
 ```
 
 Приложение будет доступно по адресу: `http://localhost:8501`
@@ -308,7 +280,7 @@ python -m ner.commands demo-triton
 ├── models/                 # Артефакты обучения
 │   ├── *.ckpt              # Чекпоинты PyTorch Lightning
 │   └── tag2idx.pt          # Маппинг тегов
-├── model_repository/       # Репозиторий для Triton Server (ВАЖНО ТУТ)
+├── model_repository/       # Репозиторий для Triton Server
 │   ├── bert_ner_onnx/      # Модель 1: ONNX
 │   │    ├── 1/
 │   │    │   └── model.onnx
