@@ -9,7 +9,7 @@ from transformers import BertTokenizerFast
 
 PROJECT_ROOT = Path(__file__).parent.parent
 BACKEND = os.getenv("TRITON_BACKEND", "onnx").lower()
-MODEL_NAME = f"bert_ner_{BACKEND}" if BACKEND != "onnx" else "bert_ner"
+MODEL_NAME = f"bert_ner_{BACKEND}"
 TRITON_URL = f"http://localhost:8000/v2/models/{MODEL_NAME}/infer"
 TOKENIZER_NAME = "bert-base-cased"
 TAG2IDX_PATH = PROJECT_ROOT / "models" / "tag2idx.pt"

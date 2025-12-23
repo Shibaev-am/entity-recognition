@@ -4,12 +4,9 @@ import sys
 from pathlib import Path
 
 import typer
+from typing_extensions import Annotated
 
-app = typer.Typer(
-    name="ner",
-    help="BERT NER MLOps Project",
-    add_completion=False,
-)
+app = typer.Typer(name="ner", help="BERT NER MLOps Project")
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -76,6 +73,43 @@ def to_tensorrt():
 def demo_local():
     demo_path = PROJECT_ROOT / "apps" / "local_run.py"
     subprocess.run(["streamlit", "run", str(demo_path)], check=True)
+
+
+@app.command("run-triton")
+def run_triton(
+    device: Annotated[
+        str,
+        typer.Option(help="Использовать GPU или CPU"),
+    ] = "gpu",
+    backend: Annotated[
+        str,
+        typer.Option(help="Тип модели: 'onnx' или 'tensorrt'"),
+    ] = "onnx",
+):
+    """Запуск Triton Inference Server с выбранной моделью."""
+    # print(device, backend)
+    # exit()
+    backend = backend.lower()
+    if backend not in ("onnx", "tensorrt"):
+        typer.echo(
+            f"❌ Неизвестный тип модели: {backend}. Используйте 'onnx' или 'tensorrt'"
+        )
+        raise typer.Exit(1)
+
+    gpu_mode = "gpu" if device == "gpu" else "no-gpu"
+    script_path = PROJECT_ROOT / "scripts" / "run_triton_server.sh"
+
+    if not script_path.exists():
+        typer.echo(f"❌ Скрипт не найден: {script_path}")
+        raise typer.Exit(1)
+
+    result = subprocess.run(
+        ["bash", str(script_path), gpu_mode, backend],
+        cwd=PROJECT_ROOT,
+    )
+
+    if result.returncode != 0:
+        raise typer.Exit(result.returncode)
 
 
 @app.command("run-app")

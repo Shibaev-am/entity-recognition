@@ -119,12 +119,52 @@ python -m ner.commands infer-tensorrt
 
 Для запуска сервера используется Docker. Убедитесь, что вы находитесь в корне проекта.
 
-**Команда запуска (GPU):**
+### Быстрый запуск через CLI
+
+```bash
+# GPU + ONNX модель (по умолчанию)
+python -m ner.commands run-triton
+
+# GPU + TensorRT модель
+python -m ner.commands run-triton --model "tensorrt"
+
+# CPU + ONNX модель
+python -m ner.commands run-triton --device "cpu"
+
+# Полный синтаксис
+python -m ner.commands run-triton --device "gpu" --model "onnx"
+python -m ner.commands run-triton --device "cpu" --model "onnx"
+python -m ner.commands run-triton --device "gpu" --model "tensorrt"
+```
+
+**Примечание:** TensorRT модель требует GPU, поэтому `--device "gpu" --model "tensorrt"` вызовет ошибку.
+
+### Ручной запуск Docker
+
+**Команда запуска (GPU, все модели):**
 ```bash
 docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
   -v $(pwd)/model_repository:/models \
   nvcr.io/nvidia/tritonserver:24.05-py3 \
   tritonserver --model-repository=/models
+```
+
+**Только ONNX модель:**
+```bash
+docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+  -v $(pwd)/model_repository:/models \
+  nvcr.io/nvidia/tritonserver:24.05-py3 \
+  tritonserver --model-repository=/models \
+  --model-control-mode=explicit --load-model=bert_ner_onnx
+```
+
+**Только TensorRT модель:**
+```bash
+docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+  -v $(pwd)/model_repository:/models \
+  nvcr.io/nvidia/tritonserver:24.05-py3 \
+  tritonserver --model-repository=/models \
+  --model-control-mode=explicit --load-model=bert_ner_tensorrt
 ```
 
 **Разбор команды:**
@@ -135,6 +175,8 @@ docker run --gpus all --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
 *   `-p 8002:8002`: Проброс порта метрик.
 *   `-v $(pwd)/model_repository:/models`: Монтирование локальной папки `model_repository` внутрь контейнера в `/models`.
 *   `nvcr.io/nvidia/tritonserver:24.05-py3`: Образ Docker (версия должна поддерживать версию Opset вашего ONNX файла).
+*   `--model-control-mode=explicit`: Загружать только явно указанные модели.
+*   `--load-model=<name>`: Имя модели для загрузки.
 
 **Вариант запуска на CPU:**
 Если GPU недоступен, просто уберите флаг `--gpus all`.
@@ -233,6 +275,7 @@ python -m ner.commands demo-triton
 | `infer` | Тестовый инференс на ONNX модели |
 | `demo-local` | Запуск локального Streamlit демо |
 | `run-app` | Запуск Streamlit демо с Triton |
+| `run-triton` | Запуск Triton Server (gpu/cpu, onnx/tensorrt) |
 
 ## Структура проекта
 

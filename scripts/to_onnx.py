@@ -43,6 +43,7 @@ def convert_to_onnx(cfg):
         / "1"
         / "model.onnx"
     )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(
         f"Exporting with params: {sum(p.numel() for p in model.model.parameters())} parameters"
