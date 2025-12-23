@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import hydra
@@ -15,18 +14,14 @@ CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def infer(cfg):
-    model_dir = cfg.paths.model_save_dir
-    # onnx_path = os.path.join(model_dir, "model.onnx")
+    model_dir = Path(cfg.paths.model_save_dir)
+    # onnx_path = model_dir / "model.onnx"
     onnx_path = (
-        Path(model_dir).parent
-        / "model_repository"
-        / "bert_ner_onnx"
-        / "1"
-        / "model.onnx"
+        model_dir.parent / "model_repository" / "bert_ner_onnx" / "1" / "model.onnx"
     )
-    tag2idx_path = os.path.join(model_dir, "tag2idx.pt")
+    tag2idx_path = model_dir / "tag2idx.pt"
 
-    if not os.path.exists(onnx_path):
+    if not onnx_path.exists():
         print("ONNX model not found. Run scripts/to_onnx.py first.")
         return
 

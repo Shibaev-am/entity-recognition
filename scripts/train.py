@@ -1,4 +1,3 @@
-import os
 import subprocess
 from pathlib import Path
 
@@ -40,8 +39,8 @@ class MetricsPlotCallback(Callback):
 
     def __init__(self, plot_dir: str):
         super().__init__()
-        self.plot_dir = plot_dir
-        os.makedirs(plot_dir, exist_ok=True)
+        self.plot_dir = Path(plot_dir)
+        self.plot_dir.mkdir(parents=True, exist_ok=True)
 
         # Храним историю как списки кортежей: [(step, value), ...]
         self.history = {
@@ -213,7 +212,7 @@ class MetricsPlotCallback(Callback):
                 spine.set_color("white")
             ax.tick_params(axis="both", colors="white", which="both")
 
-            save_path = os.path.join(self.plot_dir, filename)
+            save_path = self.plot_dir / filename
             plt.savefig(
                 save_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor()
             )
@@ -228,14 +227,14 @@ def train(cfg: DictConfig):
     pl.seed_everything(cfg.seed)
 
     # Создаём директорию для графиков
-    os.makedirs(cfg.paths.plot_dir, exist_ok=True)
+    Path(cfg.paths.plot_dir).mkdir(parents=True, exist_ok=True)
 
     dm = NERDataModule(cfg)
     dm.prepare_data()
     dm.setup()
 
-    os.makedirs(cfg.paths.model_save_dir, exist_ok=True)
-    torch.save(dm.tag2idx, os.path.join(cfg.paths.model_save_dir, "tag2idx.pt"))
+    Path(cfg.paths.model_save_dir).mkdir(parents=True, exist_ok=True)
+    torch.save(dm.tag2idx, Path(cfg.paths.model_save_dir) / "tag2idx.pt")
 
     model = BERTNERModel(
         model_name=cfg.model.name,
@@ -306,16 +305,17 @@ def train(cfg: DictConfig):
     trainer.fit(model, dm)
 
     # Сохраняем словарь тегов
-    torch.save(dm.tag2idx, os.path.join(cfg.paths.model_save_dir, "tag2idx.pt"))
+    torch.save(dm.tag2idx, Path(cfg.paths.model_save_dir) / "tag2idx.pt")
 
     # Логируем графики в MLflow (безопасный метод)
     if trainer.is_global_zero:
+        plot_dir = Path(cfg.paths.plot_dir)
         print(f"Logging plots to MLflow run: {mlflow_logger.run_id}")
-        for plot_file in os.listdir(cfg.paths.plot_dir):
-            if plot_file.endswith(".png"):
+        for plot_file in plot_dir.iterdir():
+            if plot_file.suffix == ".png":
                 mlflow_logger.experiment.log_artifact(
                     run_id=mlflow_logger.run_id,
-                    local_path=os.path.join(cfg.paths.plot_dir, plot_file),
+                    local_path=str(plot_file),
                     artifact_path="plots",
                 )
 

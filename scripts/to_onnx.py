@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import hydra
@@ -12,16 +11,16 @@ CONFIG_PATH = str(Path(__file__).parent.parent / "configs")
 
 @hydra.main(version_base=None, config_path=CONFIG_PATH, config_name="config")
 def convert_to_onnx(cfg):
-    model_dir = cfg.paths.model_save_dir
-    checkpoints = [f for f in os.listdir(model_dir) if f.endswith(".ckpt")]
+    model_dir = Path(cfg.paths.model_save_dir)
+    checkpoints = [f for f in model_dir.iterdir() if f.suffix == ".ckpt"]
     if not checkpoints:
         print("No checkpoints found!")
         return
 
-    ckpt_path = os.path.join(model_dir, checkpoints[0])
+    ckpt_path = checkpoints[0]
     print(f"Loading checkpoint: {ckpt_path}")
 
-    tag2idx = torch.load(os.path.join(model_dir, "tag2idx.pt"), map_location="cpu")
+    tag2idx = torch.load(model_dir / "tag2idx.pt", map_location="cpu")
     model = BERTNERModel.load_from_checkpoint(
         ckpt_path,
         model_name=cfg.model.name,
@@ -36,7 +35,7 @@ def convert_to_onnx(cfg):
     dummy_input = torch.randint(0, 1000, (1, 128), device="cpu")
     dummy_mask = torch.ones((1, 128), dtype=torch.long, device="cpu")
 
-    # output_path = os.path.join(model_dir, "model.onnx")
+    # output_path = model_dir / "model.onnx"
     output_path = (
         Path(model_dir).parent
         / "model_repository"

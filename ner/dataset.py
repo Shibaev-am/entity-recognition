@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytorch_lightning as pl
 import torch
@@ -65,7 +65,7 @@ class NERDataModule(pl.LightningDataModule):
         download_data(self.cfg.paths.data_dir, self.cfg.data.csv_filename)
 
     def setup(self, stage=None):
-        file_path = os.path.join(self.cfg.paths.data_dir, self.cfg.data.csv_filename)
+        file_path = Path(self.cfg.paths.data_dir) / self.cfg.data.csv_filename
         data = load_and_clean_data(file_path)
 
         sentences = data.groupby("Sentence #")["Word"].apply(list).values

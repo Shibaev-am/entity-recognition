@@ -1,5 +1,5 @@
-import os
 import shutil
+from pathlib import Path
 
 import pandas as pd
 
@@ -9,17 +9,21 @@ def download_data(data_dir: str, filename: str):
     Проверяет наличие данных. Если файла нет в папке data/,
     пытается найти его в стандартных путях (на случай Kaggle) или сообщает об ошибке.
     """
-    os.makedirs(data_dir, exist_ok=True)
-    target_path = os.path.join(data_dir, filename)
+    data_path = Path(data_dir)
+    data_path.mkdir(parents=True, exist_ok=True)
+    target_path = data_path / filename
 
-    if os.path.exists(target_path):
+    if target_path.exists():
         print(f"Data check: File found at {target_path}")
         return
 
-    possible_paths = [f"/kaggle/input/entity-annotated-corpus/{filename}", filename]
+    possible_paths = [
+        Path(f"/kaggle/input/entity-annotated-corpus/{filename}"),
+        Path(filename),
+    ]
 
     for path in possible_paths:
-        if os.path.exists(path):
+        if path.exists():
             print(f"Copying data from {path} to {target_path}")
             shutil.copy(path, target_path)
             return
